@@ -881,4 +881,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>폭</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>최소 길이 (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>최대 길이 (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>SimHub가 강도를 결정 (컨트롤러 피치 / 롤 / 히브 100 %, 스무딩 없음)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>SimHub Motion 프로필이 스트리밍되는 동안 컨트롤러의 피치, 롤, 히브는 스무딩 없이 100 %로 유지되어 자세가 두 번 스케일링·스무딩되지 않습니다. SimHub의 게인과 스무딩이 느낌을 결정하고, 최대 사용 가능 스트로크가 기본 스케일입니다. 모션이 멈추거나 소스가 게임 텔레메트리이면 프로필 값으로 돌아갑니다.</value></data>
 </root>

@@ -26,6 +26,7 @@ namespace MozaPlugin.Integration.Motion
     {
         private MozaHma150Source _source;
         private bool _includeCornerHaptics = true;
+        private bool _passThroughEffects = true;
 
         public MozaHma150Source Source
         {
@@ -50,6 +51,24 @@ namespace MozaPlugin.Integration.Motion
             {
                 if (_includeCornerHaptics == value) return;
                 _includeCornerHaptics = value;
+                Output?.ApplySettings();
+            }
+        }
+
+        /// <summary>
+        /// Pose source only: hold the controller's Pitch, Roll and Heave at 100 % / smoothness 0
+        /// while the output runs, so the pose is not scaled and smoothed a second time by the
+        /// profile's Motion Effects. SimHub's gains and smoothing then set the feel and Max
+        /// Available Stroke is the one master scale, as in Motion Manager. The profile's values
+        /// come back when the output stops or the source is game telemetry.
+        /// </summary>
+        public bool PassThroughEffects
+        {
+            get => _passThroughEffects;
+            set
+            {
+                if (_passThroughEffects == value) return;
+                _passThroughEffects = value;
                 Output?.ApplySettings();
             }
         }
@@ -160,6 +179,7 @@ namespace MozaPlugin.Integration.Motion
             if (Interlocked.Exchange(ref _counted, 1) == 0)
                 lane.Acquire();
             lane.SetIdle(false);
+            SyncPassThrough(lane, Settings);
             lane.Engage(new MotionEngageConfig { FrameIntervalMs = FrameIntervalMs });
             ConnectionState = OutputConnectionState.Connected;
         }
@@ -167,6 +187,7 @@ namespace MozaPlugin.Integration.Motion
         public override void StopInternal()
         {
             var lane = Lane;
+            lane?.SetEffectsPassThrough(false);
             lane?.Disengage();
             if (Interlocked.Exchange(ref _counted, 0) == 1)
                 lane?.Release();
@@ -179,6 +200,7 @@ namespace MozaPlugin.Integration.Motion
         {
             var lane = Lane;
             if (!CheckLane(lane)) return;
+            SyncPassThrough(lane!, currentSettings);
             var game = MozaPlugin.Instance?.MotionFeed.Latest(FeedMaxAgeMs);
             if (currentSettings?.Source == MozaHma150Source.SimHubPose)
             {
@@ -196,6 +218,10 @@ namespace MozaPlugin.Integration.Motion
 
         protected override void KeepAliveInternal(CompositeGeometryResult geometryResult)
             => CheckLane(Lane);
+
+        /// <summary>Pass-through follows the running settings; the lane ignores a repeat of the same value.</summary>
+        private static void SyncPassThrough(MozaMotionController lane, MozaHma150OutputSettings? settings)
+            => lane.SetEffectsPassThrough(settings?.Source == MozaHma150Source.SimHubPose && settings.PassThroughEffects);
 
         protected override void BeforeStartingIdle(CompositeGeometryResult geometryResult) => Lane?.SetIdle(true);
 

@@ -887,4 +887,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>Ancho</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>Duración mínima (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>Duración máxima (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Dejar que SimHub fije la intensidad (Pitch / Roll / Heave del controlador al 100 %, sin suavizado)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Mientras el perfil SimHub Motion transmite, Pitch, Roll y Heave del controlador se mantienen al 100 % sin suavizado, para que la pose no se escale ni se suavice una segunda vez. Las ganancias y el suavizado de SimHub fijan la sensación; la carrera máxima disponible es la escala principal. Los valores del perfil vuelven cuando el movimiento se detiene o la fuente es la telemetría del juego.</value></data>
 </root>

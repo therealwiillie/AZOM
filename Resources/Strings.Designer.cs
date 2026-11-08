@@ -940,5 +940,7 @@ namespace MozaPlugin.Resources
         public static string SliderLabel_BiteWidth => Get("SliderLabel_BiteWidth");
         public static string SliderLabel_BiteMinLength => Get("SliderLabel_BiteMinLength");
         public static string SliderLabel_BiteMaxLength => Get("SliderLabel_BiteMaxLength");
+        public static string Motion_Panel_PassThrough => Get("Motion_Panel_PassThrough");
+        public static string Motion_Panel_PassThroughTip => Get("Motion_Panel_PassThroughTip");
     }
 }

@@ -885,4 +885,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>Ampiezza</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>Durata minima (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>Durata massima (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Lascia che SimHub imposti l'intensità (beccheggio / rollio / sollevamento del controller al 100 %, senza smussatura)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Mentre il profilo SimHub Motion trasmette, beccheggio, rollio e sollevamento del controller restano al 100 % senza smussatura, così la posa non viene scalata e smussata una seconda volta. Guadagni e smussatura di SimHub definiscono la sensazione; la corsa massima disponibile è la scala principale. I valori del profilo tornano quando il movimento si ferma o la sorgente è la telemetria del gioco.</value></data>
 </root>

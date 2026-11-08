@@ -872,4 +872,6 @@
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>Wide-woof!</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>Short-bark (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>Long-howl (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Woof Arf Grr Bark Bark (Arf / Woof / Grr 100 %, Bark)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Woof Arf Grr Bark Woof Arf Grr Bark Woof Arf Grr Bark 100 % Woof Arf Grr Bark. Woof Arf Grr Bark; Woof Arf Grr Bark. Woof Arf Grr Bark Woof Arf.</value></data>
 </root>

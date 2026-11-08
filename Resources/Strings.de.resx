@@ -882,4 +882,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>Breite</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>Mindestdauer (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>Höchstdauer (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Stärke von SimHub bestimmen lassen (Controller-Nicken / -Rollen / -Heben auf 100 %, keine Glättung)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Während das SimHub-Motion-Profil streamt, bleiben Nicken, Rollen und Heben des Controllers bei 100 % ohne Glättung, damit die Pose nicht ein zweites Mal skaliert und geglättet wird. Verstärkung und Glättung von SimHub bestimmen das Gefühl; der maximal verfügbare Hub ist die Hauptskala. Die Profilwerte kehren zurück, wenn die Bewegung stoppt oder die Quelle Spieltelemetrie ist.</value></data>
 </root>

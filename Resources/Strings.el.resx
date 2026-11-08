@@ -881,4 +881,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>Εύρος</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>Ελάχιστη διάρκεια (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>Μέγιστη διάρκεια (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Η ένταση ορίζεται από το SimHub (Pitch / Roll / Heave του ελεγκτή στο 100 %, χωρίς εξομάλυνση)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Όσο μεταδίδεται το προφίλ SimHub Motion, τα Pitch, Roll και Heave του ελεγκτή μένουν στο 100 % χωρίς εξομάλυνση, ώστε η στάση να μην κλιμακώνεται και εξομαλύνεται δεύτερη φορά. Η αίσθηση ορίζεται από τα κέρδη και την εξομάλυνση του SimHub· η μέγιστη διαθέσιμη διαδρομή είναι η κύρια κλίμακα. Οι τιμές του προφίλ επανέρχονται όταν σταματήσει η κίνηση ή η πηγή είναι η τηλεμετρία παιχνιδιού.</value></data>
 </root>

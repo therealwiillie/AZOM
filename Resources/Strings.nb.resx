@@ -887,4 +887,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>Bredde</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>Minste varighet (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>Lengste varighet (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>La SimHub styre styrken (kontrollerens pitch / roll / heave på 100 %, ingen utjevning)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Mens SimHub Motion-profilen strømmer, holdes kontrollerens pitch, roll og heave på 100 % uten utjevning, slik at posituren ikke skaleres og jevnes ut en gang til. SimHubs forsterkning og utjevning bestemmer følelsen; maksimal tilgjengelig slaglengde er hovedskalaen. Profilverdiene kommer tilbake når bevegelsen stopper eller kilden er spilltelemetri.</value></data>
 </root>

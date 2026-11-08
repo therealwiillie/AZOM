@@ -106,7 +106,9 @@ namespace MozaPlugin.Integration.Motion
             RefreshPorts(s, idle);
             PortSelfTestButton.IsEnabled = idle && _cornerCombos.Count > 0;
             TravelSelfCheckButton.IsEnabled = idle;
-            MaxStrokeApply.IsEnabled = RigApply.IsEnabled = BrightnessApply.IsEnabled = idle;
+            RigApply.IsEnabled = BrightnessApply.IsEnabled = idle;
+            // Max Available Stroke is live-tunable, as Motion Manager's home-page slider is.
+            MaxStrokeApply.IsEnabled = connected && s!.Phase != MotionLanePhase.Enrolling;
             foreach (var b in _zoneButtons.Values) b.IsEnabled = idle;
             // Effects are live-tunable like Motion Manager's sliders, also while running.
             EffectsApply.IsEnabled = connected && s!.Phase != MotionLanePhase.Enrolling && _effectsLoaded;
@@ -151,6 +153,7 @@ namespace MozaPlugin.Integration.Motion
             SourceCombo.IsEnabled = settings != null;
             SourceCombo.SelectedIndex = settings?.Source == MozaHma150Source.SimHubPose ? 1 : 0;
             CornerHapticsCheck.IsChecked = settings?.IncludeCornerHaptics ?? true;
+            PassThroughCheck.IsChecked = settings?.PassThroughEffects ?? true;
             UpdateCornerHapticsEnabled();
             SourceCombo.SelectionChanged += (_, __) =>
             {
@@ -164,11 +167,17 @@ namespace MozaPlugin.Integration.Motion
                 var s = _output?.Settings;
                 if (s != null) s.IncludeCornerHaptics = CornerHapticsCheck.IsChecked == true;
             };
+            PassThroughCheck.Click += (_, __) =>
+            {
+                var s = _output?.Settings;
+                if (s != null) s.PassThroughEffects = PassThroughCheck.IsChecked == true;
+            };
         }
 
-        /// <summary>The haptics choice only applies to the pose source.</summary>
+        /// <summary>The haptics and pass-through choices only apply to the pose source.</summary>
         private void UpdateCornerHapticsEnabled()
-            => CornerHapticsCheck.IsEnabled = _output?.Settings?.Source == MozaHma150Source.SimHubPose;
+            => CornerHapticsCheck.IsEnabled = PassThroughCheck.IsEnabled
+                = _output?.Settings?.Source == MozaHma150Source.SimHubPose;
 
         // ------------------------------------------------------------ motion effects
 

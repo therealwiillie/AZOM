@@ -98,6 +98,8 @@ namespace MozaPlugin.Devices.Motion
         private volatile bool _seedDefaultEffects;
         private float _desiredEngineStrength = float.NaN, _desiredTactile = float.NaN;
         private int _desiredPushes;
+        // SimHub pose source: the attitude slots pass the pose through unscaled (see SetEffectsPassThrough).
+        private volatile bool _effectsPassThrough;
         private long _lastDesiredCheckMs;
         private readonly ConcurrentQueue<byte[]> _paced = new ConcurrentQueue<byte[]>();
         private long _nextPacedMs;
@@ -255,12 +257,16 @@ namespace MozaPlugin.Devices.Motion
             });
         }
 
-        /// <summary>Max Available Stroke (0..1). Write inferred from the 0x1F/04 read; read back.</summary>
+        /// <summary>
+        /// Max Available Stroke (0..1), the controller's master scale for every motion slot; read
+        /// back. Accepted in game mode too (Motion Manager's slider is live), so it goes through
+        /// the paced queue rather than back to back with its readback.
+        /// </summary>
         public void WriteMaxStroke(float value)
             => _requests.Enqueue(() =>
             {
-                Send(MozaMotionProtocol.BuildGlobalWrite(MozaMotionProtocol.GlobalMaxStroke, value));
-                Send(MozaMotionProtocol.BuildGlobalRead(MozaMotionProtocol.GlobalMaxStroke));
+                _paced.Enqueue(MozaMotionProtocol.BuildGlobalWrite(MozaMotionProtocol.GlobalMaxStroke, value));
+                _paced.Enqueue(MozaMotionProtocol.BuildGlobalRead(MozaMotionProtocol.GlobalMaxStroke));
             });
 
         /// <summary>Actuator installation distances (mm). Write inferred from the 0x1F/08 read; read back.</summary>
@@ -290,6 +296,30 @@ namespace MozaPlugin.Devices.Motion
             _requests.Enqueue(() => { _desiredPushes = 0; PushDesiredEffects(); });
         }
 
+        /// <summary>The slots a pose stream drives directly: pitch, roll and heave.</summary>
+        private static readonly MotionEffect PassThroughEffect = new MotionEffect(1f, 0f);
+        private const int PassThroughSlots = 3;
+
+        /// <summary>
+        /// While on, the controller's Pitch, Roll and Heave are held at intensity 1.0 / smoothness
+        /// 0 regardless of the desired (profile) values, so a pose streamed by the SimHub Motion
+        /// output arrives unscaled and unsmoothed: SimHub's own gains and smoothing then set the
+        /// feel, and Max Available Stroke stays the one master scale, as in Motion Manager.
+        /// The profile is untouched; switching it off pushes the profile values back the same way
+        /// <see cref="SetDesiredEffects"/> does (now if enrolled, else after the next enrol).
+        /// </summary>
+        public void SetEffectsPassThrough(bool on)
+        {
+            if (_effectsPassThrough == on) return;
+            _effectsPassThrough = on;
+            MozaLog.Info(on
+                ? "[AZOM/Motion] Pitch / Roll / Heave pass-through on: controller effects 100 % / 0 while the SimHub pose streams"
+                : "[AZOM/Motion] Pitch / Roll / Heave pass-through off: profile effects restored");
+            _requests.Enqueue(() => { _desiredPushes = 0; PushDesiredEffects(); });
+        }
+
+        public bool EffectsPassThrough => _effectsPassThrough;
+
         /// <summary>
         /// Engine vibration scale: the profile's values, else the controller's haptic intensity
         /// and the strength of the "iRacing gt3" preset the base gains were captured with.
@@ -316,7 +346,9 @@ namespace MozaPlugin.Devices.Motion
             bool any = false;
             for (int i = 0; i <= slots; i++)
             {
-                var target = desired?[i] ?? SeededEffect(i);
+                var target = _effectsPassThrough && i < PassThroughSlots
+                    ? PassThroughEffect
+                    : desired?[i] ?? SeededEffect(i);
                 if (!target.HasValue) continue;
                 var want = target.Value;
                 float curI = i < slots ? Volatile.Read(ref _effectIntensity[i]) : Volatile.Read(ref _roadIntensity);

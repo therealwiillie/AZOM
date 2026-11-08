@@ -81,7 +81,7 @@ false`) writes is not captured; the plugin's import writes intensity 0.
 
 | idx | Slider (home page) | Evidence |
 |-----|--------------------|----------|
-| `00` | Max Available Stroke | read 0.30 on 10-06 while the home page shows 30 %; 1.0 on the reconfigured 10-07 rig |
+| `00` | Max Available Stroke | read 0.30 on 10-06 while the home page shows 30 %; 1.0 on the reconfigured 10-07 rig. Write `04 00 [f32]` confirmed on a rig 8 Nov 2026 (readback follows, 0.10 mutes, 1.0 ≈ 3.3× of 0.30): a master scale of every motion slot, as Motion Manager's slider is, and accepted in game mode |
 | `01` | Haptic Feedback Intensity | `nurburgring` writes `04 01 3F000000` (0.50) and `04 01 3ECCCCCD` (0.40); `Settings.png` shows 50 % |
 
 Read at connect as `1F 12 04 00 00 00 00 00` / `1F 12 04 01 …` → `9F 21 04 [idx] [f32]`.

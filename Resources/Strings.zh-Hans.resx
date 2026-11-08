@@ -882,4 +882,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>宽度</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>最短时长 (ms)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>最长时长 (ms)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>由 SimHub 设定强度（控制器俯仰 / 侧倾 / 升沉为 100 %，无平滑）</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>SimHub Motion 配置文件传输期间，控制器的俯仰、侧倾和升沉保持 100 % 且无平滑，使姿态不会被二次缩放和平滑。由 SimHub 的增益和平滑决定手感；最大可用行程是主比例。运动停止或来源为游戏遥测时，配置文件的值会恢复。</value></data>
 </root>

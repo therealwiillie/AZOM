@@ -115,7 +115,12 @@ profile (washout, limits, per-game tuning) does the cueing:
 The pose is `FinalMotionState` (corner haptics folded in) while *Include SimHub corner haptics*
 is on (default), else `MotionState`; haptics that write heave directly (engine, touchdown) are
 in both. They run at 7–50 Hz against a ~33 Hz frame rate, so the fast ones alias. The
-controller's Pitch / Roll / Heave intensity still scales what arrives.
+controller's Pitch / Roll / Heave intensity and smoothness still apply to what arrives, so by
+default the output holds those three slots at 1.0 / 0 while it runs (*Let SimHub set the
+strength*, `MozaMotionController.SetEffectsPassThrough`) and restores the profile's values when
+it stops; Max Available Stroke then remains the one master scale. Without it a profile such as
+pitch 0.28 / smoothness 0.90 shrinks the pose to a fraction of Motion Manager's cueing (which
+also has the Acceleration Pitch / Roll slots, fed nothing here).
 
 Each live frame is followed by a `0x22/09` engine vibration frame (below) built from SimHub's
 `Rpms` and `Throttle`, scaled by the profile's Engine vibration and Tactile feedback values (else

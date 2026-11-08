@@ -882,4 +882,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_BiteWidth" xml:space="preserve"><value>Ширина</value></data>
   <data name="SliderLabel_BiteMinLength" xml:space="preserve"><value>Минимальная длительность (мс)</value></data>
   <data name="SliderLabel_BiteMaxLength" xml:space="preserve"><value>Максимальная длительность (мс)</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Силу задаёт SimHub (тангаж / крен / вертикаль контроллера на 100 %, без сглаживания)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Пока передаётся профиль SimHub Motion, тангаж, крен и вертикаль контроллера удерживаются на 100 % без сглаживания, чтобы положение не масштабировалось и не сглаживалось второй раз. Ощущение задают усиление и сглаживание SimHub; максимальный доступный ход — главная шкала. Значения профиля возвращаются, когда движение останавливается или источник — телеметрия игры.</value></data>
 </root>
