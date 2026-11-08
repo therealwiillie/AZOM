@@ -7,6 +7,7 @@ All notable changes to the AZOM plugin are documented here.
 ## Added
 
 - **High Speed Damping now works;** above the trigger speed the damping level is added to the wheelbase damper, and a trigger speed of 0 turns it off.
+- **SimHub sets the HMA150 strength in SimHub Motion profile mode:** the controller's Pitch / Roll / Heave are held at 100 % with no smoothing while the pose streams (option in the HMA150 settings, on by default), so SimHub's gains and smoothing set the feel and Max available stroke is the one master scale; the profile's values come back when motion stops. Max available stroke can be changed while motion runs.
 - **Startup music settings on the Base tab;** on/off, track 1–10 (previewed on selection) and volume, for bases that report them.
 
 ## Changed

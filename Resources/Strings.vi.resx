@@ -896,4 +896,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Bản nhạc</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Âm lượng nhạc</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>NHẠC KHỞI ĐỘNG</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Để SimHub đặt cường độ (Pitch / Roll / Heave của bộ điều khiển ở 100 %, không làm mượt)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Khi hồ sơ SimHub Motion đang truyền, Pitch, Roll và Heave của bộ điều khiển được giữ ở 100 % không làm mượt, để tư thế không bị chia tỷ lệ và làm mượt lần thứ hai. Độ lợi và làm mượt của SimHub quyết định cảm giác; hành trình tối đa khả dụng là thang chính. Giá trị hồ sơ trở lại khi chuyển động dừng hoặc nguồn là dữ liệu đo xa của trò chơi.</value></data>
 </root>

@@ -903,4 +903,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Music Track</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Music Volume</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>STARTUP MUSIC</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Let SimHub set the strength (controller Pitch / Roll / Heave at 100 %, no smoothing)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>While the SimHub Motion profile streams, the controller's Pitch, Roll and Heave are held at 100 % with no smoothing so the pose is not scaled and smoothed a second time. SimHub's gains and smoothing set the feel; Max available stroke is the master scale. The profile's values come back when motion stops or the source is game telemetry.</value></data>
 </root>

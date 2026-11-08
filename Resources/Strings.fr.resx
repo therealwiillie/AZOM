@@ -896,4 +896,6 @@ Id : {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Morceau</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Volume de la musique</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>MUSIQUE DE DÉMARRAGE</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Laisser SimHub régler l'intensité (tangage / roulis / pilonnement du contrôleur à 100 %, sans lissage)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Pendant la diffusion du profil SimHub Motion, le tangage, le roulis et le pilonnement du contrôleur restent à 100 % sans lissage, afin que la pose ne soit pas mise à l'échelle et lissée une seconde fois. Les gains et le lissage de SimHub définissent le ressenti ; la course maximale disponible est l'échelle principale. Les valeurs du profil reviennent quand le mouvement s'arrête ou que la source est la télémétrie du jeu.</value></data>
 </root>

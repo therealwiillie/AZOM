@@ -896,4 +896,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Мелодия</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Громкость музыки</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>МУЗЫКА ПРИ ЗАПУСКЕ</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Силу задаёт SimHub (тангаж / крен / вертикаль контроллера на 100 %, без сглаживания)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Пока передаётся профиль SimHub Motion, тангаж, крен и вертикаль контроллера удерживаются на 100 % без сглаживания, чтобы положение не масштабировалось и не сглаживалось второй раз. Ощущение задают усиление и сглаживание SimHub; максимальный доступный ход — главная шкала. Значения профиля возвращаются, когда движение останавливается или источник — телеметрия игры.</value></data>
 </root>

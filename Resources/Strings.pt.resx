@@ -895,4 +895,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Faixa de música</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Volume da música</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>MÚSICA DE INICIALIZAÇÃO</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Deixar o SimHub definir a intensidade (Pitch / Roll / Heave do controlador a 100 %, sem suavização)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Enquanto o perfil SimHub Motion transmite, Pitch, Roll e Heave do controlador ficam a 100 % sem suavização, para que a pose não seja escalada e suavizada uma segunda vez. Os ganhos e a suavização do SimHub definem a sensação; o curso máximo disponível é a escala principal. Os valores do perfil voltam quando o movimento para ou a fonte é a telemetria do jogo.</value></data>
 </root>

@@ -901,4 +901,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Pista de música</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Volumen de música</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>MÚSICA DE INICIO</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Dejar que SimHub fije la intensidad (Pitch / Roll / Heave del controlador al 100 %, sin suavizado)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Mientras el perfil SimHub Motion transmite, Pitch, Roll y Heave del controlador se mantienen al 100 % sin suavizado, para que la pose no se escale ni se suavice una segunda vez. Las ganancias y el suavizado de SimHub fijan la sensación; la carrera máxima disponible es la escala principal. Los valores del perfil vuelven cuando el movimiento se detiene o la fuente es la telemetría del juego.</value></data>
 </root>

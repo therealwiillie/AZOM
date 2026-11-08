@@ -886,4 +886,6 @@
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Arf Arf!</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Howl Howl!</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>AWOO WOOF!!</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Woof Arf Grr Bark Bark (Arf / Woof / Grr 100 %, Bark)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Woof Arf Grr Bark Woof Arf Grr Bark Woof Arf Grr Bark 100 % Woof Arf Grr Bark. Woof Arf Grr Bark; Woof Arf Grr Bark. Woof Arf Grr Bark Woof Arf.</value></data>
 </root>

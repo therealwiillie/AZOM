@@ -895,4 +895,6 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Κομμάτι μουσικής</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Ένταση μουσικής</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>ΜΟΥΣΙΚΗ ΕΚΚΙΝΗΣΗΣ</value></data>
+  <data name="Motion_Panel_PassThrough" xml:space="preserve"><value>Η ένταση ορίζεται από το SimHub (Pitch / Roll / Heave του ελεγκτή στο 100 %, χωρίς εξομάλυνση)</value></data>
+  <data name="Motion_Panel_PassThroughTip" xml:space="preserve"><value>Όσο μεταδίδεται το προφίλ SimHub Motion, τα Pitch, Roll και Heave του ελεγκτή μένουν στο 100 % χωρίς εξομάλυνση, ώστε η στάση να μην κλιμακώνεται και εξομαλύνεται δεύτερη φορά. Η αίσθηση ορίζεται από τα κέρδη και την εξομάλυνση του SimHub· η μέγιστη διαθέσιμη διαδρομή είναι η κύρια κλίμακα. Οι τιμές του προφίλ επανέρχονται όταν σταματήσει η κίνηση ή η πηγή είναι η τηλεμετρία παιχνιδιού.</value></data>
 </root>

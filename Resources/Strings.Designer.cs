@@ -954,5 +954,7 @@ namespace MozaPlugin.Resources
         public static string SliderLabel_StartupMusicTrack => Get("SliderLabel_StartupMusicTrack");
         public static string SliderLabel_StartupMusicVolume => Get("SliderLabel_StartupMusicVolume");
         public static string Section_StartupMusic => Get("Section_StartupMusic");
+        public static string Motion_Panel_PassThrough => Get("Motion_Panel_PassThrough");
+        public static string Motion_Panel_PassThroughTip => Get("Motion_Panel_PassThroughTip");
     }
 }
