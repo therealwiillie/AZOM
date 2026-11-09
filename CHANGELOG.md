@@ -13,6 +13,7 @@ All notable changes to the AZOM plugin are documented here.
 
 - **Steering Wheel Inertia is saved per wheel;** it follows the attached rim across profiles, while Hands-off Protection stays in the profile.
 - **Stalks start in truck-sim mode with the ETS2/ATS key map** on new installs and after Clear all settings.
+- **HMA150 Motion Effects are 0–100 % sliders that change the rig live,** as in Motion Manager; no Apply button.
 
 ## [1.7.3]
 

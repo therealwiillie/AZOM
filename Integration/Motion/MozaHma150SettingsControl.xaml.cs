@@ -34,8 +34,11 @@ namespace MozaPlugin.Integration.Motion
         private readonly Dictionary<int, Button> _identifyButtons = new Dictionary<int, Button>();
         private readonly Dictionary<byte, Border> _zoneSwatches = new Dictionary<byte, Border>();
         private readonly Dictionary<byte, Button> _zoneButtons = new Dictionary<byte, Button>();
-        private readonly List<(TextBox Intensity, TextBox Smoothness)> _effectBoxes = new List<(TextBox, TextBox)>();
-        private TextBox? _engineBox, _tactileBox;
+        private readonly List<(Slider Intensity, Slider Smoothness)> _effectSliders = new List<(Slider, Slider)>();
+        private Slider? _engineSlider, _tactileSlider;
+        private bool _tactileKnown;
+        private bool _showingEffects;
+        private readonly DispatcherTimer _effectsPush;
         private string _portLayout = string.Empty;
         private bool _setupLoaded;
         private bool _effectsLoaded;
@@ -50,8 +53,16 @@ namespace MozaPlugin.Integration.Motion
             BuildSourceItems();
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
             _timer.Tick += (_, __) => Refresh();
+            // Slider moves push live, like Motion Manager's, at most every 250 ms while dragging.
+            _effectsPush = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+            _effectsPush.Tick += (_, __) => { _effectsPush.Stop(); PushEffects(); };
             Loaded += (_, __) => { Hold(); BuildZoneRows(); BuildEffectRows(); Refresh(); _timer.Start(); };
-            Unloaded += (_, __) => { _timer.Stop(); Unhold(); };
+            Unloaded += (_, __) =>
+            {
+                _timer.Stop();
+                if (_effectsPush.IsEnabled) { _effectsPush.Stop(); PushEffects(); }
+                Unhold();
+            };
         }
 
         private void Hold()
@@ -109,7 +120,10 @@ namespace MozaPlugin.Integration.Motion
             MaxStrokeApply.IsEnabled = RigApply.IsEnabled = BrightnessApply.IsEnabled = idle;
             foreach (var b in _zoneButtons.Values) b.IsEnabled = idle;
             // Effects are live-tunable like Motion Manager's sliders, also while running.
-            EffectsApply.IsEnabled = connected && s!.Phase != MotionLanePhase.Enrolling && _effectsLoaded;
+            bool effectsLive = connected && s!.Phase != MotionLanePhase.Enrolling && _effectsLoaded;
+            foreach (var (intensity, smoothness) in _effectSliders) intensity.IsEnabled = smoothness.IsEnabled = effectsLive;
+            if (_engineSlider != null) _engineSlider.IsEnabled = effectsLive;
+            if (_tactileSlider != null) _tactileSlider.IsEnabled = effectsLive;
 
             if (s != null && connected && !_setupLoaded && s.MaxStroke.HasValue)
             {
@@ -126,17 +140,24 @@ namespace MozaPlugin.Integration.Motion
                 _effectsLoaded = true;
                 var profileEffects = MozaPlugin.Instance?.Settings?.ProfileStore?.CurrentProfile?.MotionEffects;
                 var desired = MozaPlugin.ToDesiredEffects(profileEffects);
-                for (int i = 0; i < _effectBoxes.Count; i++)
-                {
-                    var held = i < s.Effects.Length ? s.Effects[i]!.Value : s.RoadDetail.Value;
-                    ShowEffect(_effectBoxes[i], desired[i] ?? lane!.SeededEffect(i) ?? held);
-                }
                 int engine = profileEffects?.EngineVibrationStrength ?? -1;
                 int tactile = profileEffects?.TactileIntensity ?? -1;
-                _engineBox!.Text = (engine >= 0 ? engine : MozaMotionController.DefaultEngineStrengthPercent)
-                    .ToString(CultureInfo.CurrentCulture);
-                _tactileBox!.Text = tactile >= 0 ? tactile.ToString(CultureInfo.CurrentCulture)
-                    : s.HapticIntensity.HasValue ? (s.HapticIntensity.Value * 100).ToString("0", CultureInfo.CurrentCulture) : "";
+                _showingEffects = true;
+                try
+                {
+                    for (int i = 0; i < _effectSliders.Count; i++)
+                    {
+                        var held = i < s.Effects.Length ? s.Effects[i]!.Value : s.RoadDetail.Value;
+                        var e = desired[i] ?? lane!.SeededEffect(i) ?? held;
+                        _effectSliders[i].Intensity.Value = Math.Round(e.Intensity * 100);
+                        _effectSliders[i].Smoothness.Value = Math.Round(e.Smoothness * 100);
+                    }
+                    _engineSlider!.Value = engine >= 0 ? engine : MozaMotionController.DefaultEngineStrengthPercent;
+                    _tactileKnown = tactile >= 0 || s.HapticIntensity.HasValue;
+                    _tactileSlider!.Value = tactile >= 0 ? tactile
+                        : s.HapticIntensity.HasValue ? Math.Round(s.HapticIntensity.Value * 100) : 0;
+                }
+                finally { _showingEffects = false; }
             }
             RefreshLighting(lane);
         }
@@ -184,51 +205,66 @@ namespace MozaPlugin.Integration.Motion
             if (EffectRows.Children.Count > 0) return;
             foreach (var label in EffectLabels())
             {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
-                row.Children.Add(new TextBlock { Text = label, Width = 260, VerticalAlignment = VerticalAlignment.Center });
-                var intensity = new TextBox { Width = 80, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-                var smoothness = new TextBox { Width = 80, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-                row.Children.Add(intensity);
-                row.Children.Add(smoothness);
+                var row = NewEffectRow(label);
+                var intensity = AddSlider(row);
+                var smoothness = AddSlider(row);
                 EffectRows.Children.Add(row);
-                _effectBoxes.Add((intensity, smoothness));
+                _effectSliders.Add((intensity, smoothness));
             }
-            _engineBox = AddSingleRow(Strings.Motion_Effect_EngineVibration);
-            _tactileBox = AddSingleRow(Strings.Motion_Effect_TactileFeedback);
+            _engineSlider = AddSingleRow(Strings.Motion_Effect_EngineVibration);
+            _tactileSlider = AddSingleRow(Strings.Motion_Effect_TactileFeedback);
+            _tactileSlider.ValueChanged += (_, __) => { if (!_showingEffects) _tactileKnown = true; };
         }
 
-        /// <summary>A row with only the intensity column.</summary>
-        private TextBox AddSingleRow(string label)
+        private static StackPanel NewEffectRow(string label)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
             row.Children.Add(new TextBlock { Text = label, Width = 260, VerticalAlignment = VerticalAlignment.Center });
-            var box = new TextBox { Width = 80, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-            row.Children.Add(box);
+            return row;
+        }
+
+        /// <summary>A row with only the intensity column.</summary>
+        private Slider AddSingleRow(string label)
+        {
+            var row = NewEffectRow(label);
+            var slider = AddSlider(row);
             EffectRows.Children.Add(row);
-            return box;
+            return slider;
         }
 
-        private static void ShowEffect((TextBox Intensity, TextBox Smoothness) boxes, MotionEffect e)
+        /// <summary>A 0–100 % slider in whole steps with its value beside it, as in Motion Manager.</summary>
+        private Slider AddSlider(Panel row)
         {
-            boxes.Intensity.Text = (e.Intensity * 100).ToString("0", CultureInfo.CurrentCulture);
-            boxes.Smoothness.Text = (e.Smoothness * 100).ToString("0", CultureInfo.CurrentCulture);
-        }
-
-        /// <summary>Saves every valid row into the active profile, which pushes it to the controller.</summary>
-        private void EffectsApply_Click(object sender, RoutedEventArgs e)
-        {
-            var values = new Dictionary<int, (int Intensity, int Smoothness)>();
-            for (int i = 0; i < _effectBoxes.Count; i++)
+            var slider = new Slider
             {
-                if (!TryParse(_effectBoxes[i].Intensity.Text, out double ip) || ip < 0 || ip > 100) continue;
-                if (!TryParse(_effectBoxes[i].Smoothness.Text, out double sp) || sp < 0 || sp > 100) continue;
-                values[i] = ((int)Math.Round(ip), (int)Math.Round(sp));
-            }
-            MozaPlugin.Instance?.SetMotionEffects(values, Percent(_engineBox), Percent(_tactileBox));
+                Minimum = 0, Maximum = 100, Width = 200, IsEnabled = false,
+                SmallChange = 1, LargeChange = 5, TickFrequency = 1,
+                IsSnapToTickEnabled = true, IsMoveToPointEnabled = true,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var value = new TextBlock { Text = "0", Width = 40, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            slider.ValueChanged += (_, __) =>
+            {
+                value.Text = slider.Value.ToString("0", CultureInfo.CurrentCulture);
+                if (_showingEffects || !_effectsLoaded) return;
+                if (!_effectsPush.IsEnabled) _effectsPush.Start();
+            };
+            row.Children.Add(slider);
+            row.Children.Add(value);
+            return slider;
         }
 
-        private static int? Percent(TextBox? box)
-            => box != null && TryParse(box.Text, out double v) && v >= 0 && v <= 100 ? (int)Math.Round(v) : (int?)null;
+        /// <summary>Saves every slider into the active profile, which pushes it to the controller.</summary>
+        private void PushEffects()
+        {
+            if (!_effectsLoaded) return;
+            var values = new Dictionary<int, (int Intensity, int Smoothness)>();
+            for (int i = 0; i < _effectSliders.Count; i++)
+                values[i] = ((int)Math.Round(_effectSliders[i].Intensity.Value), (int)Math.Round(_effectSliders[i].Smoothness.Value));
+            int? engine = _engineSlider == null ? (int?)null : (int)Math.Round(_engineSlider.Value);
+            int? tactile = _tactileSlider == null || !_tactileKnown ? (int?)null : (int)Math.Round(_tactileSlider.Value);
+            MozaPlugin.Instance?.SetMotionEffects(values, engine, tactile);
+        }
 
         private void RefreshPorts(MotionControllerSnapshot? s, bool idle)
         {

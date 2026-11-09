@@ -94,13 +94,10 @@
         <TextBlock Style="{StaticResource Header}" Text="{x:Static res:Strings.Motion_Panel_Effects}"/>
         <StackPanel Style="{StaticResource Row}">
             <TextBlock Style="{StaticResource Label}"/>
-            <TextBlock Width="88" Text="{x:Static res:Strings.Motion_Panel_Intensity}"/>
-            <TextBlock Width="88" Text="{x:Static res:Strings.Motion_Panel_Smoothness}"/>
+            <TextBlock Width="248" Text="{x:Static res:Strings.Motion_Panel_Intensity}"/>
+            <TextBlock Width="248" Text="{x:Static res:Strings.Motion_Panel_Smoothness}"/>
         </StackPanel>
         <StackPanel x:Name="EffectRows"/>
-        <StackPanel Style="{StaticResource Row}" Margin="0,6,0,0">
-            <Button x:Name="EffectsApply" Content="{x:Static res:Strings.Motion_Panel_Apply}" Click="EffectsApply_Click"/>
-        </StackPanel>
 
         <TextBlock Style="{StaticResource Header}" Text="{x:Static res:Strings.Motion_Panel_Lighting}"/>
         <StackPanel Style="{StaticResource Row}">
