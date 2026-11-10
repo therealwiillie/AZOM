@@ -29,6 +29,11 @@ namespace MozaPlugin.Devices.Motion
         private const float PitchRadPerSetpoint = 0.349f;
         private const float RollRadPerSetpoint = -0.347f;
         private const float HeaveMmPerSetpoint = 56.4f;
+        // Pose heave as f6: SimHub's default heave range (17 m/s² of vertical acceleration to
+        // 80 mm) run backwards, so at that range and 100 % gain the controller gets about the
+        // game's own vertical acceleration. Bench run of 10 Nov: f6 is what the controller's
+        // Heave effect follows in game mode, and +f6 moves the platform down.
+        private const float HeaveAccelPerMm = 17f / 80f;
         private const int GearPulseMs = 120;
         private const double EngineOffRpm = 100.0;
 
@@ -116,11 +121,13 @@ namespace MozaPlugin.Devices.Motion
 
         /// <summary>
         /// A frame that carries a SimHub Motion pose instead of raw physics: pitch/roll in f0/f1,
-        /// which the controller applies as platform attitude; heave as a common-mode shock offset,
-        /// the controller's heave source; f4–f6 zero so its acceleration effects stay idle. Heading,
-        /// yaw rate, speed, pedals, engine and flags come from <paramref name="game"/> when a game runs.
+        /// which the controller applies as platform attitude; heave as vertical acceleration in f6,
+        /// which the controller's Heave effect follows (quick, and washed out, so it gives bumps and
+        /// crests their kick and holds nothing), and as a common-mode shock offset; f4/f5 zero so its
+        /// acceleration effects stay idle. Heading, yaw rate, speed, pedals, engine and flags come
+        /// from <paramref name="game"/> when a game runs.
         /// Pose signs: SimHub's pitch is −GameData pitch and its roll +GameData roll (MotionPlugin),
-        /// so both flip to match <see cref="Update"/>. Heave sign untested on the rig.
+        /// so both flip to match <see cref="Update"/>. Heave: +mm is up, and +f6 moves the platform down.
         /// <paramref name="direct"/> adds the same pose as mode 2 setpoints
         /// (<see cref="MotionTelemetryFrame.Setpoints"/>), scaled so pitch and roll move the
         /// platform as far as f0/f1 do in game mode with the controller's sliders at 100 %.
@@ -144,6 +151,7 @@ namespace MozaPlugin.Devices.Motion
             }
             else
                 f.Flags = MozaMotionProtocol.FlagInGame;
+            f.Fields[6] = (float)(-heaveMm * HeaveAccelPerMm);
             for (int k = 0; k < 4; k++)
                 f.Fields[8 + k] = (float)(MotionTelemetryFrame.ShockRestMm[k] - heaveMm);
             if (direct)
