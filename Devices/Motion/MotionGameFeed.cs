@@ -47,6 +47,11 @@ namespace MozaPlugin.Devices.Motion
         // the push the first version gave on that crest (judged good from the seat, no fault at
         // the crest itself); the strength scales both, so 80 → ×12 up to 24, which two recorded
         // passes held for 0.6 s with every controller status line at error 0 ("a little muted").
+        // Lightness on track peaked at −12 m/s² raw (the mountain, 200 km/h); braking and cornering
+        // stay under 20 m/s², the crash detector's own threshold is 40.
+        private const double CrestInputLimit = 12.0;
+        private const double CrestImpactAccel = 30.0;
+        private const int CrestImpactHoldMs = 2000;
         private const double CrestGainFull = 15.0;
         private const double CrestMaxAccel = 30.0;
         private const int GearPulseMs = 120;
@@ -79,6 +84,7 @@ namespace MozaPlugin.Devices.Motion
         private long _shiftUntilMs;
         private double _heaveSlow;
         private long _heaveSlowAtMs = -1;
+        private long _crestHoldUntilMs;
 
         /// <summary>Latest frame if it is younger than <paramref name="maxAgeMs"/>.</summary>
         public MotionTelemetryFrame? Latest(int maxAgeMs)
@@ -97,6 +103,7 @@ namespace MozaPlugin.Devices.Motion
                 _lastGear = null;
                 _heaveSlow = 0.0;
                 _heaveSlowAtMs = -1;
+                _crestHoldUntilMs = 0;
                 return;
             }
 
@@ -119,7 +126,16 @@ namespace MozaPlugin.Devices.Motion
             f.Fields[7] = (float)speed;
             double sinceSlow = _heaveSlowAtMs < 0 ? 0.0 : Math.Min(0.25, (now - _heaveSlowAtMs) / 1000.0);
             _heaveSlowAtMs = now;
-            _heaveSlow += (heave - _heaveSlow) * (1.0 - Math.Exp(-sinceSlow / HeaveSlowSeconds));
+            // An impact is not a crest: its spikes (−20…−28 m/s² vertical with 90…350 along the car,
+            // Bathurst wall, 10 Nov) got through the low-pass and held the crest term at its
+            // ceiling again and again. Clip what goes in, and sit out the seconds after a hit.
+            if (Math.Abs(surge) > CrestImpactAccel || Math.Abs(sway) > CrestImpactAccel)
+                _crestHoldUntilMs = now + CrestImpactHoldMs;
+            if (now < _crestHoldUntilMs)
+                _heaveSlow = 0.0;
+            else
+                _heaveSlow += (Math.Max(-CrestInputLimit, Math.Min(CrestInputLimit, heave)) - _heaveSlow)
+                    * (1.0 - Math.Exp(-sinceSlow / HeaveSlowSeconds));
             f.HeaveSlow = (float)_heaveSlow;
             if (!ReadIRacingShocks(pluginManager, f))
             {
