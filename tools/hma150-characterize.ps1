@@ -23,10 +23,11 @@
     .\hma150-characterize.ps1 -Experiment Feedback
     .\hma150-characterize.ps1 -Experiment Writes -StrokeValue 0.5 -RigL1 520 -RigL2 480
     .\hma150-characterize.ps1 -Experiment Manual   # mode 2: streamed 0x1E/07 heave/pitch/roll setpoints (~3 min)
+    .\hma150-characterize.ps1 -Experiment ManualScale   # mode 2: pitch, roll and heave held 62 s each for the mm scales (~5 min)
 #>
 param(
     [string]  $ComPort      = "COM6",
-    [ValidateSet("All", "Gain", "Sweep", "Heave", "Gating", "Feedback", "Writes", "Manual")]
+    [ValidateSet("All", "Gain", "Sweep", "Heave", "Gating", "Feedback", "Writes", "Manual", "ManualScale")]
     [string]  $Experiment   = "All",
     [ValidateSet("Pitch", "Roll")]
     [string]  $Axis         = "Pitch",
@@ -441,19 +442,7 @@ function Manual-Sine([string]$name, [byte]$axis, [double]$amp, [double]$hz, [dou
 function Exp-Manual {
     $heave = [Math]::Max(0.0, [Math]::Min(0.3, $ManualHeave))
     $tilt = [Math]::Max(0.0, [Math]::Min(0.1, $ManualTilt))
-    if (-not $SkipSelfCheck) {
-        Write-Host "Self-check: the platform moves to its ready position." -ForegroundColor Magenta
-        $script:selfCheckOk = $false
-        Send 0x1E @(0x03, 0x07, 0, 0, 0)
-        $null = Wait-For { $script:selfCheckOk } 30000 "selfCheckSuccess"
-        Pump 300
-    }
-    Write-Host "Entering manual motion test mode (2)..." -ForegroundColor Green
-    Send 0x1E @(0x03, 0x02, 0, 0, 0)
-    $null = Wait-For { $script:mode.current -eq 2 } 15000 "mode 2"
-    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
-    Mark "manual mode"
-    Pump 3000
+    Enter-Manual
 
     Manual-Sine "heave (run state stop)" 0x03 $heave 0.2 10
     Send 0x20 @(0x02, 0x03, 0x00); Pump 300
@@ -470,6 +459,36 @@ function Exp-Manual {
     Manual-Sine "roll" 0x01 $tilt 0.5 6
     Mark ("MANUAL heave hold {0:+0.00;-0.00} for {1} s (up or down? the 60 s log line gives the mm)" -f $heave, $ManualHoldSec)
     Manual-Stream $ManualHoldSec 0x03 { param($t) $heave }
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
+    Pump 2000
+}
+
+function Enter-Manual {
+    if (-not $SkipSelfCheck) {
+        Write-Host "Self-check: the platform moves to its ready position." -ForegroundColor Magenta
+        $script:selfCheckOk = $false
+        Send 0x1E @(0x03, 0x07, 0, 0, 0)
+        $null = Wait-For { $script:selfCheckOk } 30000 "selfCheckSuccess"
+        Pump 300
+    }
+    Write-Host "Entering manual motion test mode (2)..." -ForegroundColor Green
+    Send 0x1E @(0x03, 0x02, 0, 0, 0)
+    $null = Wait-For { $script:mode.current -eq 2 } 15000 "mode 2"
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
+    Mark "manual mode"
+    Pump 3000
+}
+# One axis held long enough for a 60 s Output Displacement line: the mm each setpoint unit gives.
+function Exp-ManualScale {
+    $heave = [Math]::Max(0.0, [Math]::Min(0.3, $ManualHeave))
+    $tilt = [Math]::Max(0.0, [Math]::Min(0.1, $ManualTilt))
+    Enter-Manual
+    $holds = @(@("pitch", 0x00, $tilt), @("roll", 0x01, $tilt), @("heave", 0x03, (-$heave)), @("heave", 0x03, (3 * $heave)))
+    foreach ($h in $holds) {
+        $v = [Math]::Max(-0.3, [Math]::Min(0.3, [double]$h[2]))
+        Mark ("MANUAL {0} hold {1:+0.00;-0.00} for {2} s (which way does it move?)" -f $h[0], $v, $ManualHoldSec)
+        Manual-Stream $ManualHoldSec ([byte]$h[1]) { param($t) $v }
+    }
     foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
     Pump 2000
 }
@@ -491,6 +510,7 @@ try {
     Connect-Controller
     if ($Experiment -eq "Writes") { Exp-Writes; return }
     if ($Experiment -eq "Manual") { Exp-Manual; Mark "done"; return }
+    if ($Experiment -eq "ManualScale") { Exp-ManualScale; Mark "done"; return }
     Enter-Game
     switch ($Experiment) {
         "All"      {
