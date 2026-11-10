@@ -62,6 +62,12 @@ namespace MozaPlugin.Protocol
         /// </summary>
         public float[]? Setpoints;
 
+        /// <summary>
+        /// Vertical acceleration (m/s²) low-passed to its slow part, the second-long lightness
+        /// of a crest or load of a dip; not sent, read by the pose source's crest signal.
+        /// </summary>
+        public float HeaveSlow;
+
         /// <summary>Engine speed for the <c>0x22/09</c> engine vibration; negative = send none.</summary>
         public float EngineRpm = -1f;
         /// <summary>Unrounded throttle (0..1) for the vibration's 4th harmonic.</summary>

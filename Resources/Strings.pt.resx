@@ -896,4 +896,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Volume da música</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>MÚSICA DE INICIALIZAÇÃO</value></data>
   <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Perfil do SimHub Motion, direto (com heave)</value></data>
+  <data name="Motion_Panel_CrestBoost" xml:space="preserve"><value>Força em lombas e depressões</value></data>
 </root>

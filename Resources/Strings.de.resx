@@ -897,4 +897,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Musiklautstärke</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>STARTMUSIK</value></data>
   <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>SimHub-Motion-Profil, direkt (mit Heben)</value></data>
+  <data name="Motion_Panel_CrestBoost" xml:space="preserve"><value>Stärke Kuppen und Senken</value></data>
 </root>

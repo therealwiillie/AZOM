@@ -896,4 +896,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Ένταση μουσικής</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>ΜΟΥΣΙΚΗ ΕΚΚΙΝΗΣΗΣ</value></data>
   <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Προφίλ SimHub Motion, απευθείας (με heave)</value></data>
+  <data name="Motion_Panel_CrestBoost" xml:space="preserve"><value>Ένταση σε κορυφές και βυθίσματα</value></data>
 </root>

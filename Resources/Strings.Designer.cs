@@ -955,5 +955,6 @@ namespace MozaPlugin.Resources
         public static string SliderLabel_StartupMusicVolume => Get("SliderLabel_StartupMusicVolume");
         public static string Section_StartupMusic => Get("Section_StartupMusic");
         public static string Motion_Source_SimHubDirect => Get("Motion_Source_SimHubDirect");
+        public static string Motion_Panel_CrestBoost => Get("Motion_Panel_CrestBoost");
     }
 }

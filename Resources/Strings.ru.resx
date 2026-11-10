@@ -897,4 +897,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Громкость музыки</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>МУЗЫКА ПРИ ЗАПУСКЕ</value></data>
   <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Профиль SimHub Motion, напрямую (с вертикалью)</value></data>
+  <data name="Motion_Panel_CrestBoost" xml:space="preserve"><value>Сила на гребнях и впадинах</value></data>
 </root>

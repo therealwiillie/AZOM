@@ -152,6 +152,8 @@ namespace MozaPlugin.Integration.Motion
             SourceCombo.IsEnabled = settings != null;
             SourceCombo.SelectedIndex = Math.Max(0, Math.Min(SourceCombo.Items.Count - 1, (int)(settings?.Source ?? MozaHma150Source.GameTelemetry)));
             CornerHapticsCheck.IsChecked = settings?.IncludeCornerHaptics ?? true;
+            CrestBoostSlider.Value = settings?.CrestBoost ?? 0;
+            CrestBoostValue.Text = ((int)CrestBoostSlider.Value).ToString(CultureInfo.CurrentCulture);
             UpdateCornerHapticsEnabled();
             SourceCombo.SelectionChanged += (_, __) =>
             {
@@ -165,11 +167,22 @@ namespace MozaPlugin.Integration.Motion
                 var s = _output?.Settings;
                 if (s != null) s.IncludeCornerHaptics = CornerHapticsCheck.IsChecked == true;
             };
+            CrestBoostSlider.ValueChanged += (_, __) =>
+            {
+                int value = (int)Math.Round(CrestBoostSlider.Value);
+                CrestBoostValue.Text = value.ToString(CultureInfo.CurrentCulture);
+                var s = _output?.Settings;
+                if (s != null) s.CrestBoost = value;
+            };
         }
 
-        /// <summary>The haptics choice only applies to the pose sources.</summary>
+        /// <summary>The haptics choice and the crest strength only apply to the pose sources.</summary>
         private void UpdateCornerHapticsEnabled()
-            => CornerHapticsCheck.IsEnabled = (_output?.Settings?.Source ?? MozaHma150Source.GameTelemetry) != MozaHma150Source.GameTelemetry;
+        {
+            var settings = _output?.Settings;
+            CornerHapticsCheck.IsEnabled = (settings?.Source ?? MozaHma150Source.GameTelemetry) != MozaHma150Source.GameTelemetry;
+            CrestBoostSlider.IsEnabled = settings?.Source == MozaHma150Source.SimHubPose;
+        }
 
         // ------------------------------------------------------------ motion effects
 

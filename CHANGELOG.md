@@ -10,6 +10,7 @@ All notable changes to the AZOM plugin are documented here.
 - **Startup music settings on the Base tab;** on/off, track 1–10 (previewed on selection) and volume, for bases that report them.
 - **HMA150 motion source "SimHub Motion profile, direct (with heave)";** sends SimHub's pitch, roll and heave as positions, so heave moves the platform and holds.
 - **HMA150 heave from a SimHub Motion profile;** the profile's heave now reaches the controller as vertical acceleration, the input its Heave effect follows, so bumps and crests move the platform.
+- **HMA150 "Crest and dip strength" slider (SimHub Motion profile source);** adds the game's slow vertical acceleration to the heave, so a long crest drops the platform and a dip lifts it without making the road busier. 0 = off.
 
 ## Changed
 
