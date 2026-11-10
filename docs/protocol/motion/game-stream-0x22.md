@@ -126,8 +126,9 @@ per second and ±1:
 Pitch and roll then move the platform as far as the pose source does with the controller's
 Pitch / Roll at 100 %, and heave is a held position in mm. The controller's Motion Effects
 play no part, and it gets no `0x22/00` frame, so nothing derived from one (Road Detail,
-Acceleration Pitch / Roll) runs. SimHub idle and stale data return the setpoints to 0. Changing
-the source while running leaves one mode through standby and enters the other.
+Acceleration Pitch / Roll) runs. SimHub idle and stale data return the setpoints to 0, and
+stopping eases them to 0 at 1.5 units per second before standby. Changing the source while
+running leaves one mode through standby and enters the other.
 
 The pose is `FinalMotionState` (corner haptics folded in) while *Include SimHub corner haptics*
 is on (default), else `MotionState`; haptics that write heave directly (engine, touchdown) are

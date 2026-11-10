@@ -48,6 +48,9 @@ namespace MozaPlugin.Devices.Motion
         // Direct pose: the fastest a setpoint may travel, in setpoint units per second. Above
         // anything a pose asks for; it only softens the jump when frames stop or resume.
         private const float SetpointSlewPerSecond = 5f;
+        // Direct pose: the gentler return to level when motion stops, and how long it may take.
+        private const float SetpointLevelPerSecond = 1.5f;
+        private const int SetpointLevelTimeoutMs = 1_500;
         private const int DesiredPushAttempts = 3;
         private const float DefaultEngineStrength = DefaultEngineStrengthPercent / 100f, DefaultTactile = 0.4f;
 
@@ -670,11 +673,11 @@ namespace MozaPlugin.Devices.Motion
 
         /// <summary>
         /// Direct pose: one <c>0x1E/07</c> per axis towards <paramref name="target"/> (null =
-        /// level), each limited to <see cref="SetpointSlewPerSecond"/> and clamped to ±1.
+        /// level), each limited to <paramref name="slewPerSecond"/> and clamped to ±1.
         /// </summary>
-        private void StreamSetpoints(long now, float[]? target)
+        private void StreamSetpoints(long now, float[]? target, float slewPerSecond = SetpointSlewPerSecond)
         {
-            float step = SetpointSlewPerSecond * Math.Min(100, Math.Max(1, now - _lastSetpointMs)) / 1000f;
+            float step = slewPerSecond * Math.Min(100, Math.Max(1, now - _lastSetpointMs)) / 1000f;
             _lastSetpointMs = now;
             for (int i = 0; i < _setpoints.Length; i++)
             {
@@ -965,6 +968,13 @@ namespace MozaPlugin.Devices.Motion
             }
             if (_modeCurrent == (int)MotionMode.ManualTest)
             {
+                // Ease back to level before the motors go off, rather than one step from the last pose.
+                long levelBy = _clock.ElapsedMilliseconds + SetpointLevelTimeoutMs;
+                while (!SetpointsLevel() && _clock.ElapsedMilliseconds < levelBy)
+                {
+                    StreamSetpoints(_clock.ElapsedMilliseconds, null, SetpointLevelPerSecond);
+                    yield return _frameIntervalMs;
+                }
                 foreach (int wait in LevelSetpoints()) yield return wait;
                 yield return 300;
             }
@@ -976,6 +986,13 @@ namespace MozaPlugin.Devices.Motion
                 yield return 50;
             _phase = MotionLanePhase.Ready;
             MozaLog.Info($"[AZOM/Motion] Disengaged (mode {_modeCurrent})");
+        }
+
+        private bool SetpointsLevel()
+        {
+            foreach (float v in _setpoints)
+                if (Math.Abs(v) > 0.001f) return false;
+            return true;
         }
 
         /// <summary>Every direct-pose axis to 0, one write per request slot.</summary>
