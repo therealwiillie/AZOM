@@ -34,16 +34,19 @@ namespace MozaPlugin.Devices.Motion
         // game's own vertical acceleration. Bench run of 10 Nov: f6 is what the controller's
         // Heave effect follows in game mode, and +f6 moves the platform down.
         private const float HeaveAccelPerMm = 17f / 80f;
-        // Crest signal. A crest or a dip is a long, gentle change in vertical acceleration
-        // (Bathurst, 911 Cup, 217 km/h: 1.2 s at −4 m/s² mean), a bump a short, large one
-        // (~7 m/s² for 30–50 ms), so only duration tells them apart: the low-pass keeps the
-        // first and passes ~1 m/s² of the second, which the dead band then drops.
+        // Crest signal. A crest is a long, gentle lightness (Bathurst, 911 Cup, 217 km/h: 1.2 s at
+        // −4 m/s² mean, −4.7 low-passed peak), a bump a short, large one (~7 m/s² for 30–50 ms),
+        // so only duration tells them apart: the low-pass keeps the first and the dead band drops
+        // what it leaves of the second. One-sided: the first version also answered compressions,
+        // and the landing after that crest pushed back as hard as the crest itself (a 47 m/s²
+        // swing within a second at strength 80), which felt odd and was followed by the
+        // controller leaving game mode with error 261.
         private const double HeaveSlowSeconds = 0.2;
-        private const double CrestDeadbandAccel = 1.0;
-        // The crest term's ceiling: f6 ±8 m/s² is what the bench run of 10 Nov held for seconds
-        // without complaint. At ±24…30 (strength 80 on the first scale) the controller left
-        // game mode with error 261 a few seconds after the Bathurst crest, under braking.
-        private const float CrestMaxAccel = 8f;
+        private const double CrestDeadbandAccel = 2.0;
+        // f6 per m/s² of lightness beyond the dead band, per strength step: 80 → ×12, 24 m/s² at
+        // that crest's mean, the push judged good from the seat.
+        private const double CrestGainPerStep = 0.15;
+        private const float CrestMaxAccel = 24f;
         private const int GearPulseMs = 120;
         private const double EngineOffRpm = 100.0;
 
@@ -149,13 +152,13 @@ namespace MozaPlugin.Devices.Motion
         /// <paramref name="direct"/> adds the same pose as mode 2 setpoints
         /// (<see cref="MotionTelemetryFrame.Setpoints"/>), scaled so pitch and roll move the
         /// platform as far as f0/f1 do in game mode with the controller's sliders at 100 %.
-        /// <paramref name="crestGain"/> adds the game's slow vertical acceleration
-        /// (<see cref="MotionTelemetryFrame.HeaveSlow"/> beyond its dead band) to f6, times that
-        /// gain: the car going light over a crest lowers the platform, a dip raises it,
-        /// whatever the profile's heave makes of something that long and gentle.
+        /// <paramref name="crestStrength"/> (0–100) adds the game's slow lightness
+        /// (<see cref="MotionTelemetryFrame.HeaveSlow"/> below its dead band) to f6: the car going
+        /// light over a crest lowers the platform, whatever the profile's heave makes of something
+        /// that long and gentle. Compressions are left to the profile.
         /// </summary>
         public static MotionTelemetryFrame PoseFrame(double pitchDegrees, double rollDegrees, double heaveMm,
-            MotionTelemetryFrame? game, bool direct = false, double crestGain = 0.0)
+            MotionTelemetryFrame? game, bool direct = false, double crestStrength = 0.0)
         {
             var f = new MotionTelemetryFrame();
             f.Fields[0] = (float)(-pitchDegrees * DegToRad);
@@ -174,12 +177,11 @@ namespace MozaPlugin.Devices.Motion
             else
                 f.Flags = MozaMotionProtocol.FlagInGame;
             f.Fields[6] = (float)(-heaveMm * HeaveAccelPerMm);
-            if (crestGain > 0.0 && game != null)
+            if (crestStrength > 0.0 && game != null)
             {
-                double slow = game.HeaveSlow;
-                double beyond = Math.Abs(slow) - CrestDeadbandAccel;
+                double beyond = -game.HeaveSlow - CrestDeadbandAccel;
                 if (beyond > 0.0)
-                    f.Fields[6] -= Math.Min(CrestMaxAccel, (float)(beyond * crestGain)) * Math.Sign(slow);
+                    f.Fields[6] += Math.Min(CrestMaxAccel, (float)(beyond * crestStrength * CrestGainPerStep));
             }
             for (int k = 0; k < 4; k++)
                 f.Fields[8 + k] = (float)(MotionTelemetryFrame.ShockRestMm[k] - heaveMm);
