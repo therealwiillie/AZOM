@@ -43,10 +43,12 @@ namespace MozaPlugin.Devices.Motion
         // controller leaving game mode with error 261.
         private const double HeaveSlowSeconds = 0.2;
         private const double CrestDeadbandAccel = 2.0;
-        // f6 per m/s² of lightness beyond the dead band, per strength step: 80 → ×12, 24 m/s² at
-        // that crest's mean, the push judged good from the seat.
-        private const double CrestGainPerStep = 0.15;
-        private const float CrestMaxAccel = 24f;
+        // At full strength: f6 per m/s² of lightness beyond the dead band, and the ceiling. 30 is
+        // the push the first version gave on that crest (judged good from the seat, no fault at
+        // the crest itself); the strength scales both, so 80 → ×12 up to 24, which two recorded
+        // passes held for 0.6 s with every controller status line at error 0 ("a little muted").
+        private const double CrestGainFull = 15.0;
+        private const double CrestMaxAccel = 30.0;
         private const int GearPulseMs = 120;
         private const double EngineOffRpm = 100.0;
 
@@ -181,7 +183,7 @@ namespace MozaPlugin.Devices.Motion
             {
                 double beyond = -game.HeaveSlow - CrestDeadbandAccel;
                 if (beyond > 0.0)
-                    f.Fields[6] += Math.Min(CrestMaxAccel, (float)(beyond * crestStrength * CrestGainPerStep));
+                    f.Fields[6] += (float)(Math.Min(1.0, crestStrength / 100.0) * Math.Min(CrestMaxAccel, beyond * CrestGainFull));
             }
             for (int k = 0; k < 4; k++)
                 f.Fields[8 + k] = (float)(MotionTelemetryFrame.ShockRestMm[k] - heaveMm);
