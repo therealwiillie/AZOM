@@ -114,8 +114,8 @@ profile (washout, limits, per-game tuning) does the cueing:
 
 **SimHub direct source** (*Motion source* = SimHub Motion profile, direct (with heave)): the
 lane runs the controller in mode 2 instead of game mode and streams the same pose as three
-`0x1E/07` setpoints each frame interval (`MotionTelemetryFrame.Setpoints`), limited to 5 units
-per second and ±1:
+`0x1E/07` setpoints each frame interval (`MotionTelemetryFrame.Setpoints`), limited to 20 units
+per second (heave: about 1.1 m/s) and ±1:
 
 | Axis | Setpoint |
 |------|----------|
@@ -126,8 +126,10 @@ per second and ±1:
 Pitch and roll then move the platform as far as the pose source does with the controller's
 Pitch / Roll at 100 %, and heave is a held position in mm. The controller's Motion Effects
 play no part, and it gets no `0x22/00` frame, so nothing derived from one (Road Detail,
-Acceleration Pitch / Roll) runs. SimHub idle and stale data return the setpoints to 0, and
-stopping eases them to 0 at 1.5 units per second before standby. Changing the source while
+Acceleration Pitch / Roll) runs. SimHub idle and stale data ease the setpoints to 0 at 1.5
+units per second, the pose is rejoined at that rate when frames resume, and stopping eases
+them to 0 the same way before standby. First track test (10 Nov) at 5 units per second: heave
+moved the right way but sharp bumps felt soft, hence the higher live limit. Changing the source while
 running leaves one mode through standby and enters the other.
 
 The pose is `FinalMotionState` (corner haptics folded in) while *Include SimHub corner haptics*

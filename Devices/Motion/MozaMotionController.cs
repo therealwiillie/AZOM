@@ -45,10 +45,12 @@ namespace MozaPlugin.Devices.Motion
         private const int EngageConnectTimeoutMs = 15_000;
         private const int StandbyTimeoutMs = 5_000;
         private const int DesiredCheckMs = 1_000;
-        // Direct pose: the fastest a setpoint may travel, in setpoint units per second. Above
-        // anything a pose asks for; it only softens the jump when frames stop or resume.
-        private const float SetpointSlewPerSecond = 5f;
-        // Direct pose: the gentler return to level when motion stops, and how long it may take.
+        // Direct pose: the fastest a live setpoint may travel, in setpoint units per second
+        // (heave: about 1.1 m/s). Above anything a pose asks for, so bumps and kerbs arrive
+        // unsoftened; it only bounds a glitch in the source.
+        private const float SetpointSlewPerSecond = 20f;
+        // Direct pose: the gentler rate to level when frames stop or motion stops, and back to
+        // the pose when frames resume; and how long the return on stop may take.
         private const float SetpointLevelPerSecond = 1.5f;
         private const int SetpointLevelTimeoutMs = 1_500;
         private const int DesiredPushAttempts = 3;
@@ -129,6 +131,7 @@ namespace MozaPlugin.Devices.Motion
         private bool _direct;
         private readonly float[] _setpoints = new float[MozaMotionProtocol.ManualAxes.Length];
         private long _lastSetpointMs;
+        private bool _setpointsSettling = true;
         private bool _wasConnected;
         private bool _released;
         private long _lastConnectAttemptMs = -ConnectRetryMs;
@@ -653,7 +656,11 @@ namespace MozaPlugin.Devices.Motion
                 // Mode 2 takes nothing until it is entered; idle and stale data go to level.
                 if (_phase != MotionLanePhase.Game) return;
                 bool live = !_idle && posted != null && age <= StaleFrameMs;
-                StreamSetpoints(now, live ? posted!.Setpoints : null);
+                // Level, and the way back to the pose after it, go at the gentle rate.
+                if (!live) _setpointsSettling = true;
+                bool reached = StreamSetpoints(now, live ? posted!.Setpoints : null,
+                    _setpointsSettling ? SetpointLevelPerSecond : SetpointSlewPerSecond);
+                if (live && reached) _setpointsSettling = false;
                 Interlocked.Increment(ref _framesSent);
                 StreamVibration(live ? posted! : MotionTelemetryFrame.Neutral(inGame: false));
                 return;
@@ -673,10 +680,12 @@ namespace MozaPlugin.Devices.Motion
 
         /// <summary>
         /// Direct pose: one <c>0x1E/07</c> per axis towards <paramref name="target"/> (null =
-        /// level), each limited to <paramref name="slewPerSecond"/> and clamped to ±1.
+        /// level), each limited to <paramref name="slewPerSecond"/> and clamped to ±1. True
+        /// once every axis is on its target.
         /// </summary>
-        private void StreamSetpoints(long now, float[]? target, float slewPerSecond = SetpointSlewPerSecond)
+        private bool StreamSetpoints(long now, float[]? target, float slewPerSecond)
         {
+            bool reached = true;
             float step = slewPerSecond * Math.Min(100, Math.Max(1, now - _lastSetpointMs)) / 1000f;
             _lastSetpointMs = now;
             for (int i = 0; i < _setpoints.Length; i++)
@@ -685,9 +694,11 @@ namespace MozaPlugin.Devices.Motion
                 want = Math.Max(-1f, Math.Min(1f, want));
                 float v = _setpoints[i] + Math.Max(-step, Math.Min(step, want - _setpoints[i]));
                 _setpoints[i] = v;
+                if (Math.Abs(want - v) > 1e-4f) reached = false;
                 _connection.SendStream(StreamKind.MotionSetpointPitch + i,
                     MozaMotionProtocol.BuildManualSetpoint(MozaMotionProtocol.ManualAxes[i], v));
             }
+            return reached;
         }
 
         private void StreamVibration(MotionTelemetryFrame frame)
@@ -929,6 +940,7 @@ namespace MozaPlugin.Devices.Motion
                 SendRunState(MotionRunState.Run);
                 yield return 300;
                 _lastSetpointMs = _clock.ElapsedMilliseconds;
+                _setpointsSettling = true;
                 _nextFrameMs = 0;
                 _gameLostSinceMs = -1;
                 _phase = MotionLanePhase.Game;
