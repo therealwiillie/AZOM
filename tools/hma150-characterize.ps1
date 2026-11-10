@@ -22,10 +22,12 @@
     .\hma150-characterize.ps1 -Experiment Gating
     .\hma150-characterize.ps1 -Experiment Feedback
     .\hma150-characterize.ps1 -Experiment Writes -StrokeValue 0.5 -RigL1 520 -RigL2 480
+    .\hma150-characterize.ps1 -Experiment Manual   # mode 2: streamed 0x1E/07 heave/pitch/roll setpoints (~3 min)
+    .\hma150-characterize.ps1 -Experiment ManualScale   # mode 2: pitch, roll and heave held 62 s each for the mm scales (~5 min)
 #>
 param(
     [string]  $ComPort      = "COM6",
-    [ValidateSet("All", "Gain", "Sweep", "Heave", "Gating", "Feedback", "Writes")]
+    [ValidateSet("All", "Gain", "Sweep", "Heave", "Gating", "Feedback", "Writes", "Manual", "ManualScale")]
     [string]  $Experiment   = "All",
     [ValidateSet("Pitch", "Roll")]
     [string]  $Axis         = "Pitch",
@@ -40,6 +42,9 @@ param(
     [double]  $StrokeValue  = -1,      # Writes: Max Available Stroke 0..1 (-1 = skip)
     [double]  $RigL1        = -1,      # Writes: rig length mm (-1 = skip)
     [double]  $RigL2        = -1,      # Writes: rig width mm
+    [double]  $ManualHeave  = 0.2,     # Manual: heave setpoint amplitude (slider units, clamped to 0.3)
+    [double]  $ManualTilt   = 0.05,    # Manual: pitch/roll setpoint amplitude (clamped to 0.1)
+    [double]  $ManualHoldSec = 62,     # Manual: heave hold, long enough for one 60 s Output Displacement line
     [switch]  $SkipLighting,
     [switch]  $SkipSelfCheck,
     [int]     $ExitMode     = 13,
@@ -411,6 +416,103 @@ function Exp-Writes {
     }
 }
 
+# Mode 2 (Manual Motion Test) takes direct pitch / roll / heave setpoints (0x1E/07). Motion
+# Manager only sends one per slider release; this streams them at the frame rate to see
+# whether the controller follows a continuous stream, how it filters it, and the heave scale.
+function Set-Manual([byte]$axis, [double]$v) { Send 0x1E (@(0x07, $axis) + (F32 $v)) }
+function Manual-Stream([double]$sec, [byte]$axis, [scriptblock]$gen) {
+    $t = [Diagnostics.Stopwatch]::StartNew()
+    while ($t.ElapsedMilliseconds -lt $sec * 1000) {
+        $now = $script:clock.ElapsedMilliseconds
+        if ($now -ge $script:nextFrame) {
+            $script:nextFrame = $now + $script:frameMs
+            Set-Manual $axis (& $gen ($t.ElapsedMilliseconds / 1000.0))
+        }
+        Heartbeat; Poll-Serial
+        if ($script:mode.current -ne 2) { throw "Controller left manual mode (current=$($script:mode.current) flags=0x$('{0:X2}' -f $script:mode.flags))" }
+        Start-Sleep -Milliseconds 1
+    }
+    Set-Manual $axis 0.0
+    Pump 2000
+}
+function Manual-Sine([string]$name, [byte]$axis, [double]$amp, [double]$hz, [double]$sec) {
+    Mark ("MANUAL {0} sine +/-{1} at {2} Hz, streamed at {3} Hz" -f $name, $amp, $hz, $RateHz)
+    Manual-Stream $sec $axis { param($t) $amp * [Math]::Sin(2 * [Math]::PI * $hz * $t) }
+}
+function Exp-Manual {
+    $heave = [Math]::Max(0.0, [Math]::Min(0.3, $ManualHeave))
+    $tilt = [Math]::Max(0.0, [Math]::Min(0.1, $ManualTilt))
+    Enter-Manual
+
+    Manual-Sine "heave (run state stop)" 0x03 $heave 0.2 10
+    Send 0x20 @(0x02, 0x03, 0x00); Pump 300
+    Mark "run state 03"
+    Manual-Sine "heave (run state run)" 0x03 $heave 0.2 10
+    Manual-Sine "heave" 0x03 $heave 1.0 6
+    Manual-Sine "heave" 0x03 $heave 3.0 5
+    foreach ($v in @($heave, (-$heave))) {
+        Mark ("MANUAL heave step {0:+0.00;-0.00} held 3 s (how fast does it get there?)" -f $v)
+        Set-Manual 0x03 $v; Pump 3000
+        Set-Manual 0x03 0.0; Pump 2000
+    }
+    Manual-Sine "pitch" 0x00 $tilt 0.5 6
+    Manual-Sine "roll" 0x01 $tilt 0.5 6
+    Mark ("MANUAL heave hold {0:+0.00;-0.00} for {1} s (up or down? the 60 s log line gives the mm)" -f $heave, $ManualHoldSec)
+    Manual-Stream $ManualHoldSec 0x03 { param($t) $heave }
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
+    Pump 2000
+}
+
+function Enter-Manual {
+    if (-not $SkipSelfCheck) {
+        Write-Host "Self-check: the platform moves to its ready position." -ForegroundColor Magenta
+        $script:selfCheckOk = $false
+        Send 0x1E @(0x03, 0x07, 0, 0, 0)
+        $null = Wait-For { $script:selfCheckOk } 30000 "selfCheckSuccess"
+        Pump 300
+    }
+    Write-Host "Entering manual motion test mode (2)..." -ForegroundColor Green
+    Send 0x1E @(0x03, 0x02, 0, 0, 0)
+    $null = Wait-For { $script:mode.current -eq 2 } 15000 "mode 2"
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
+    Mark "manual mode"
+    Pump 3000
+}
+# One axis held long enough for a 60 s Output Displacement line: the mm each setpoint unit gives.
+function Exp-ManualScale {
+    $heave = [Math]::Max(0.0, [Math]::Min(0.3, $ManualHeave))
+    $tilt = [Math]::Max(0.0, [Math]::Min(0.1, $ManualTilt))
+    Enter-Manual
+    Send 0x20 @(0x02, 0x03, 0x00); Pump 300
+    Mark "run state 03"
+    # All three axes in one tick, back to back: does the controller take them (count the echoes per axis)?
+    Mark ("MANUAL three axes per tick for 10 s at {0} Hz: heave +/-0.05 0.5 Hz, pitch and roll +/-0.02 0.3 Hz" -f $RateHz)
+    $t3 = [Diagnostics.Stopwatch]::StartNew()
+    while ($t3.ElapsedMilliseconds -lt 10000) {
+        $now = $script:clock.ElapsedMilliseconds
+        if ($now -ge $script:nextFrame) {
+            $script:nextFrame = $now + $script:frameMs
+            $ts = $t3.ElapsedMilliseconds / 1000.0
+            Set-Manual 0x00 (0.02 * [Math]::Sin(2 * [Math]::PI * 0.3 * $ts))
+            Set-Manual 0x01 (0.02 * [Math]::Sin(2 * [Math]::PI * 0.3 * $ts))
+            Set-Manual 0x03 (0.05 * [Math]::Sin(2 * [Math]::PI * 0.5 * $ts))
+        }
+        Heartbeat; Poll-Serial
+        if ($script:mode.current -ne 2) { throw "Controller left manual mode (current=$($script:mode.current))" }
+        Start-Sleep -Milliseconds 1
+    }
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0; Pump 20 }
+    Pump 2000
+    $holds = @(@("pitch", 0x00, $tilt), @("roll", 0x01, $tilt), @("heave", 0x03, (-$heave)), @("heave", 0x03, (3 * $heave)))
+    foreach ($h in $holds) {
+        $v = [Math]::Max(-0.3, [Math]::Min(0.3, [double]$h[2]))
+        Mark ("MANUAL {0} hold {1:+0.00;-0.00} for {2} s (which way does it move?)" -f $h[0], $v, $ManualHoldSec)
+        Manual-Stream $ManualHoldSec ([byte]$h[1]) { param($t) $v }
+    }
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
+    Pump 2000
+}
+
 # ---------------------------------------------------------------- main
 Write-Host "==============================================="
 Write-Host " HMA150 characterization: $Experiment ($Axis), $RateHz Hz frames"
@@ -427,6 +529,8 @@ $serial.Open()
 try {
     Connect-Controller
     if ($Experiment -eq "Writes") { Exp-Writes; return }
+    if ($Experiment -eq "Manual") { Exp-Manual; Mark "done"; return }
+    if ($Experiment -eq "ManualScale") { Exp-ManualScale; Mark "done"; return }
     Enter-Game
     switch ($Experiment) {
         "All"      {
