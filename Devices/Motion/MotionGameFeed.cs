@@ -56,10 +56,17 @@ namespace MozaPlugin.Devices.Motion
         private const double CrestMaxAccel = 30.0;
         // The push follows the lightness up at once and lets go slowly. Over a long crest the
         // lightness wobbles around the dead band two or three times a second (Bathurst, 250 km/h,
-        // 3.5 s: six separate pushes of 0 ↔ 30, felt as being bounced); with this release the
-        // same stretch is one push, and a lap's 29 pushes become 14.
+        // 3.5 s: six separate pushes of 0 ↔ 30, felt as being bounced); with a slow release the
+        // same stretch is one push, and a lap's 29 pushes become 10.
         private const double CrestAttackSeconds = 0.05;
-        private const double CrestReleaseSeconds = 0.5;
+        // How it lets go follows the car: gently while nothing presses back, firmly as the car
+        // lands (slow acceleration turning positive, full firmness from +3 m/s²). One fixed
+        // release fitted the crest whose landing is firm and came out too severe on those that
+        // land softly or late.
+        private const double CrestReleaseSoftSeconds = 0.8;
+        private const double CrestReleaseFirmSeconds = 0.3;
+        private const double CrestLandingAccel = 3.0;
+        private const double CrestImpactReleaseSeconds = 0.15;
         private const int GearPulseMs = 120;
         private const double EngineOffRpm = 100.0;
 
@@ -145,8 +152,18 @@ namespace MozaPlugin.Devices.Motion
                 _heaveSlow += (Math.Max(-CrestInputLimit, Math.Min(CrestInputLimit, heave)) - _heaveSlow)
                     * (1.0 - Math.Exp(-sinceSlow / HeaveSlowSeconds));
             double crestTarget = Math.Min(CrestMaxAccel, Math.Max(0.0, -_heaveSlow - CrestDeadbandAccel) * CrestGainFull);
-            _crestPush += (crestTarget - _crestPush)
-                * (1.0 - Math.Exp(-sinceSlow / (crestTarget > _crestPush ? CrestAttackSeconds : CrestReleaseSeconds)));
+            double crestRate;
+            if (crestTarget > _crestPush)
+                crestRate = 1.0 / CrestAttackSeconds;
+            else if (now < _crestHoldUntilMs)
+                crestRate = 1.0 / CrestImpactReleaseSeconds;
+            else
+            {
+                double landing = Math.Max(0.0, Math.Min(1.0, _heaveSlow / CrestLandingAccel));
+                crestRate = 1.0 / CrestReleaseSoftSeconds
+                    + (1.0 / CrestReleaseFirmSeconds - 1.0 / CrestReleaseSoftSeconds) * landing;
+            }
+            _crestPush += (crestTarget - _crestPush) * (1.0 - Math.Exp(-sinceSlow * crestRate));
             f.CrestPush = (float)_crestPush;
             if (!ReadIRacingShocks(pluginManager, f))
             {
