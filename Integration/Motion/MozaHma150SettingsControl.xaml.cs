@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using MozaPlugin.Devices.Motion;
@@ -155,10 +156,6 @@ namespace MozaPlugin.Integration.Motion
             CrestBoostSlider.Value = settings?.CrestBoost ?? 0;
             CrestBoostValue.Text = ((int)CrestBoostSlider.Value).ToString(CultureInfo.CurrentCulture);
             UpdateCornerHapticsEnabled();
-            MozaLog.Info($"[AZOM/Motion] Crest slider built: settings {(settings == null ? "none" : "set")}, "
-                + $"CrestBoost {settings?.CrestBoost}, source {settings?.Source}, slider {CrestBoostSlider.Value}, enabled {CrestBoostSlider.IsEnabled}");
-            Unloaded += (_, __) => MozaLog.Info(
-                $"[AZOM/Motion] Crest slider closed: slider {CrestBoostSlider.Value}, CrestBoost {_output?.Settings?.CrestBoost}");
             SourceCombo.SelectionChanged += (_, __) =>
             {
                 var s = _output?.Settings;
@@ -171,13 +168,37 @@ namespace MozaPlugin.Integration.Motion
                 var s = _output?.Settings;
                 if (s != null) s.IncludeCornerHaptics = CornerHapticsCheck.IsChecked == true;
             };
+            // Only the user's own input writes the setting. A drag or a key press sets the slider's
+            // "current" value over the local one given above, and WPF drops that when the page
+            // leaves the dialog, so Value falls back and raises ValueChanged once more on the way out
+            // (seen 10 Nov: 80 → 0, 22 ms before Unloaded, and the 0 was saved).
+            bool crestKeyDown = false;
+            CrestBoostSlider.PreviewKeyDown += (_, e) =>
+            {
+                switch (e.Key)
+                {
+                    case Key.Left: case Key.Right: case Key.Up: case Key.Down:
+                    case Key.PageUp: case Key.PageDown: case Key.Home: case Key.End:
+                        crestKeyDown = true;
+                        break;
+                }
+            };
+            CrestBoostSlider.PreviewKeyUp += (_, __) => crestKeyDown = false;
+            CrestBoostSlider.LostKeyboardFocus += (_, __) => crestKeyDown = false;
             CrestBoostSlider.ValueChanged += (_, __) =>
             {
                 int value = (int)Math.Round(CrestBoostSlider.Value);
-                CrestBoostValue.Text = value.ToString(CultureInfo.CurrentCulture);
+                bool byUser = crestKeyDown || CrestBoostSlider.IsMouseCaptureWithin
+                    || (CrestBoostSlider.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed);
                 var s = _output?.Settings;
-                MozaLog.Info($"[AZOM/Motion] Crest slider moved to {value}, settings {(s == null ? "none" : "set")}");
+                if (!byUser)
+                {
+                    MozaLog.Info($"[AZOM/Motion] Crest slider fell back to {value} by itself; setting stays {s?.CrestBoost}");
+                    return;
+                }
+                CrestBoostValue.Text = value.ToString(CultureInfo.CurrentCulture);
                 if (s != null) s.CrestBoost = value;
+                MozaLog.Info($"[AZOM/Motion] Crest and dip strength set to {s?.CrestBoost}");
             };
         }
 

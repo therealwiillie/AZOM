@@ -72,10 +72,6 @@ namespace MozaPlugin.Integration.Motion
             {
                 value = Math.Max(0, Math.Min(100, value));
                 if (_crestBoost == value) return;
-                // Diagnostic (crest slider not keeping its value): who writes it, and from where.
-                string trace = Environment.StackTrace;
-                MozaLog.Info($"[AZOM/Motion] CrestBoost {_crestBoost} -> {value}, output {(Output == null ? "none" : "set")}\n"
-                    + (trace.Length > 1500 ? trace.Substring(0, 1500) : trace));
                 _crestBoost = value;
                 Output?.ApplySettings();
             }
