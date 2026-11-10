@@ -483,6 +483,26 @@ function Exp-ManualScale {
     $heave = [Math]::Max(0.0, [Math]::Min(0.3, $ManualHeave))
     $tilt = [Math]::Max(0.0, [Math]::Min(0.1, $ManualTilt))
     Enter-Manual
+    Send 0x20 @(0x02, 0x03, 0x00); Pump 300
+    Mark "run state 03"
+    # All three axes in one tick, back to back: does the controller take them (count the echoes per axis)?
+    Mark ("MANUAL three axes per tick for 10 s at {0} Hz: heave +/-0.05 0.5 Hz, pitch and roll +/-0.02 0.3 Hz" -f $RateHz)
+    $t3 = [Diagnostics.Stopwatch]::StartNew()
+    while ($t3.ElapsedMilliseconds -lt 10000) {
+        $now = $script:clock.ElapsedMilliseconds
+        if ($now -ge $script:nextFrame) {
+            $script:nextFrame = $now + $script:frameMs
+            $ts = $t3.ElapsedMilliseconds / 1000.0
+            Set-Manual 0x00 (0.02 * [Math]::Sin(2 * [Math]::PI * 0.3 * $ts))
+            Set-Manual 0x01 (0.02 * [Math]::Sin(2 * [Math]::PI * 0.3 * $ts))
+            Set-Manual 0x03 (0.05 * [Math]::Sin(2 * [Math]::PI * 0.5 * $ts))
+        }
+        Heartbeat; Poll-Serial
+        if ($script:mode.current -ne 2) { throw "Controller left manual mode (current=$($script:mode.current))" }
+        Start-Sleep -Milliseconds 1
+    }
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0; Pump 20 }
+    Pump 2000
     $holds = @(@("pitch", 0x00, $tilt), @("roll", 0x01, $tilt), @("heave", 0x03, (-$heave)), @("heave", 0x03, (3 * $heave)))
     foreach ($h in $holds) {
         $v = [Math]::Max(-0.3, [Math]::Min(0.3, [double]$h[2]))
