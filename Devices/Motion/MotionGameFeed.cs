@@ -40,7 +40,10 @@ namespace MozaPlugin.Devices.Motion
         // first and passes ~1 m/s² of the second, which the dead band then drops.
         private const double HeaveSlowSeconds = 0.2;
         private const double CrestDeadbandAccel = 1.0;
-        private const float CrestMaxAccel = 30f;
+        // The crest term's ceiling: f6 ±8 m/s² is what the bench run of 10 Nov held for seconds
+        // without complaint. At ±24…30 (strength 80 on the first scale) the controller left
+        // game mode with error 261 a few seconds after the Bathurst crest, under braking.
+        private const float CrestMaxAccel = 8f;
         private const int GearPulseMs = 120;
         private const double EngineOffRpm = 100.0;
 

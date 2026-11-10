@@ -62,8 +62,8 @@ namespace MozaPlugin.Integration.Motion
 
         /// <summary>
         /// Pose sources only, 0–100: strength of the crest signal, the game's slow vertical
-        /// acceleration added to the heave the controller is sent. 0 = off; 100 = ten times
-        /// the acceleration.
+        /// acceleration added to the heave the controller is sent. 0 = off; 100 = four times
+        /// the acceleration, never more than <c>MotionGameFeed</c>'s ±8 m/s² ceiling.
         /// </summary>
         public int CrestBoost
         {
@@ -219,7 +219,7 @@ namespace MozaPlugin.Integration.Motion
                     : primary?.MotionState;
                 if (pose != null)
                     lane.PostFrame(MotionGameFeed.PoseFrame(pose.PitchDegrees, pose.RollDegrees, pose.HeaveMm, game, direct,
-                        currentSettings.CrestBoost / 10.0));
+                        currentSettings.CrestBoost / 25.0));
                 return;
             }
             if (game != null) lane.PostFrame(game);
