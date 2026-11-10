@@ -63,10 +63,10 @@ namespace MozaPlugin.Protocol
         public float[]? Setpoints;
 
         /// <summary>
-        /// Vertical acceleration (m/s²) low-passed to its slow part, the second-long lightness
-        /// of a crest or load of a dip; not sent, read by the pose source's crest signal.
+        /// The crest signal at full strength (m/s² of f6, ≥ 0): the car's slow lightness beyond a
+        /// dead band, quick to rise and slow to let go; not sent, scaled into f6 by the pose source.
         /// </summary>
-        public float HeaveSlow;
+        public float CrestPush;
 
         /// <summary>Engine speed for the <c>0x22/09</c> engine vibration; negative = send none.</summary>
         public float EngineRpm = -1f;
