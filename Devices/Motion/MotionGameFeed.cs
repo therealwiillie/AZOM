@@ -210,9 +210,9 @@ namespace MozaPlugin.Devices.Motion
             }
             else
                 f.Flags = MozaMotionProtocol.FlagInGame;
-            f.Fields[6] = (float)(-heaveMm * HeaveAccelPerMm);
+            f.Fields[6] = (float)(heaveMm * HeaveAccelPerMm);
             if (crestStrength > 0.0 && game != null)
-                f.Fields[6] += (float)(Math.Min(1.0, crestStrength / 100.0) * game.CrestPush);
+                f.Fields[6] -= (float)(Math.Min(1.0, crestStrength / 100.0) * game.CrestPush);
             for (int k = 0; k < 4; k++)
                 f.Fields[8 + k] = (float)(MotionTelemetryFrame.ShockRestMm[k] - heaveMm);
             return f;
