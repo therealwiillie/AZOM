@@ -155,6 +155,10 @@ namespace MozaPlugin.Integration.Motion
             CrestBoostSlider.Value = settings?.CrestBoost ?? 0;
             CrestBoostValue.Text = ((int)CrestBoostSlider.Value).ToString(CultureInfo.CurrentCulture);
             UpdateCornerHapticsEnabled();
+            MozaLog.Info($"[AZOM/Motion] Crest slider built: settings {(settings == null ? "none" : "set")}, "
+                + $"CrestBoost {settings?.CrestBoost}, source {settings?.Source}, slider {CrestBoostSlider.Value}, enabled {CrestBoostSlider.IsEnabled}");
+            Unloaded += (_, __) => MozaLog.Info(
+                $"[AZOM/Motion] Crest slider closed: slider {CrestBoostSlider.Value}, CrestBoost {_output?.Settings?.CrestBoost}");
             SourceCombo.SelectionChanged += (_, __) =>
             {
                 var s = _output?.Settings;
@@ -172,6 +176,7 @@ namespace MozaPlugin.Integration.Motion
                 int value = (int)Math.Round(CrestBoostSlider.Value);
                 CrestBoostValue.Text = value.ToString(CultureInfo.CurrentCulture);
                 var s = _output?.Settings;
+                MozaLog.Info($"[AZOM/Motion] Crest slider moved to {value}, settings {(s == null ? "none" : "set")}");
                 if (s != null) s.CrestBoost = value;
             };
         }
