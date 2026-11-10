@@ -147,9 +147,10 @@ namespace MozaPlugin.Integration.Motion
         {
             SourceCombo.Items.Add(new ComboBoxItem { Content = Strings.Motion_Source_GameTelemetry, Tag = MozaHma150Source.GameTelemetry });
             SourceCombo.Items.Add(new ComboBoxItem { Content = Strings.Motion_Source_SimHubPose, Tag = MozaHma150Source.SimHubPose });
+            SourceCombo.Items.Add(new ComboBoxItem { Content = Strings.Motion_Source_SimHubDirect, Tag = MozaHma150Source.SimHubDirect });
             var settings = _output?.Settings;
             SourceCombo.IsEnabled = settings != null;
-            SourceCombo.SelectedIndex = settings?.Source == MozaHma150Source.SimHubPose ? 1 : 0;
+            SourceCombo.SelectedIndex = Math.Max(0, Math.Min(SourceCombo.Items.Count - 1, (int)(settings?.Source ?? MozaHma150Source.GameTelemetry)));
             CornerHapticsCheck.IsChecked = settings?.IncludeCornerHaptics ?? true;
             UpdateCornerHapticsEnabled();
             SourceCombo.SelectionChanged += (_, __) =>
@@ -166,9 +167,9 @@ namespace MozaPlugin.Integration.Motion
             };
         }
 
-        /// <summary>The haptics choice only applies to the pose source.</summary>
+        /// <summary>The haptics choice only applies to the pose sources.</summary>
         private void UpdateCornerHapticsEnabled()
-            => CornerHapticsCheck.IsEnabled = _output?.Settings?.Source == MozaHma150Source.SimHubPose;
+            => CornerHapticsCheck.IsEnabled = (_output?.Settings?.Source ?? MozaHma150Source.GameTelemetry) != MozaHma150Source.GameTelemetry;
 
         // ------------------------------------------------------------ motion effects
 

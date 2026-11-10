@@ -896,4 +896,5 @@ Id : {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Morceau</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Volume de la musique</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>MUSIQUE DE DÉMARRAGE</value></data>
+  <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Profil SimHub Motion, direct (avec pilonnement)</value></data>
 </root>

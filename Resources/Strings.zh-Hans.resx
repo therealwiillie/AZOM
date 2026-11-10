@@ -896,4 +896,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>音乐曲目</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>音乐音量</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>开机音乐</value></data>
+  <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>SimHub Motion 配置文件，直接（含升沉）</value></data>
 </root>

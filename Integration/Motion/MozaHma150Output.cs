@@ -19,6 +19,11 @@ namespace MozaPlugin.Integration.Motion
         GameTelemetry = 0,
         /// <summary>SimHub Motion's pose (its effects profile) as attitude and heave.</summary>
         SimHubPose = 1,
+        /// <summary>
+        /// The same pose as direct setpoints in the controller's manual mode: no controller
+        /// cueing, and heave is a held position.
+        /// </summary>
+        SimHubDirect = 2,
     }
 
     /// <summary>Persisted output settings; the controller stores its own setup.</summary>
@@ -40,7 +45,7 @@ namespace MozaPlugin.Integration.Motion
         }
 
         /// <summary>
-        /// Pose source only: stream <c>FinalMotionState</c> (corner haptics folded in) rather than
+        /// Pose sources only: stream <c>FinalMotionState</c> (corner haptics folded in) rather than
         /// <c>MotionState</c>. Haptics that write heave directly are in both.
         /// </summary>
         public bool IncludeCornerHaptics
@@ -160,9 +165,12 @@ namespace MozaPlugin.Integration.Motion
             if (Interlocked.Exchange(ref _counted, 1) == 0)
                 lane.Acquire();
             lane.SetIdle(false);
-            lane.Engage(new MotionEngageConfig { FrameIntervalMs = FrameIntervalMs });
+            lane.Engage(EngageConfig(Settings));
             ConnectionState = OutputConnectionState.Connected;
         }
+
+        private static MotionEngageConfig EngageConfig(MozaHma150OutputSettings? settings)
+            => new MotionEngageConfig { FrameIntervalMs = FrameIntervalMs, Direct = settings?.Source == MozaHma150Source.SimHubDirect };
 
         public override void StopInternal()
         {
@@ -179,8 +187,12 @@ namespace MozaPlugin.Integration.Motion
         {
             var lane = Lane;
             if (!CheckLane(lane)) return;
+            var source = currentSettings?.Source ?? MozaHma150Source.GameTelemetry;
+            bool direct = source == MozaHma150Source.SimHubDirect;
+            // Source changed while running: the lane leaves its stream mode and enters the other.
+            if (direct != lane!.EngagedDirect && lane.Phase == MotionLanePhase.Game) lane.Engage(EngageConfig(currentSettings));
             var game = MozaPlugin.Instance?.MotionFeed.Latest(FeedMaxAgeMs);
-            if (currentSettings?.Source == MozaHma150Source.SimHubPose)
+            if (source != MozaHma150Source.GameTelemetry)
             {
                 // Final state: the bypass geometry folds corner haptics into it, as SimHub's <PoseAxis> token reads.
                 var primary = geometryResult?.PrimaryGeometryResult;
@@ -188,10 +200,10 @@ namespace MozaPlugin.Integration.Motion
                     ? primary?.FinalMotionState ?? primary?.MotionState
                     : primary?.MotionState;
                 if (pose != null)
-                    lane!.PostFrame(MotionGameFeed.PoseFrame(pose.PitchDegrees, pose.RollDegrees, pose.HeaveMm, game));
+                    lane.PostFrame(MotionGameFeed.PoseFrame(pose.PitchDegrees, pose.RollDegrees, pose.HeaveMm, game, direct));
                 return;
             }
-            if (game != null) lane!.PostFrame(game);
+            if (game != null) lane.PostFrame(game);
         }
 
         protected override void KeepAliveInternal(CompositeGeometryResult geometryResult)

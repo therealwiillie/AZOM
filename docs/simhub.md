@@ -1966,7 +1966,8 @@ own kinematics"). What the decompile requires of such an output:
   default the HMA150 output does **not** use the pose: its controller takes raw physics like
   Motion Manager sends, so it streams `GameData` from the plugin's own `DataUpdate`
   (`MotionInputData` is `internal`). Its *Motion source* setting
-  (`MozaHma150OutputSettings.Source`) can switch it to the pose
+  (`MozaHma150OutputSettings.Source`) can switch it to the pose, as a game-mode frame or as
+  direct mode 2 setpoints with a held heave
   ([`protocol/motion/game-stream-0x22.md`](protocol/motion/game-stream-0x22.md) § Plugin mapping).
 - **Output settings changes:** the base settings' `PropertyChanged` calls
   `Output.ApplySettings()`, which drops the JSON-cloned running settings so the next update

@@ -895,4 +895,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Faixa de música</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Volume da música</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>MÚSICA DE INICIALIZAÇÃO</value></data>
+  <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Perfil do SimHub Motion, direto (com heave)</value></data>
 </root>

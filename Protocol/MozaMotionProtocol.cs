@@ -56,6 +56,12 @@ namespace MozaPlugin.Protocol
         public byte ThrottlePercent;
         public byte Flags;
 
+        /// <summary>
+        /// Direct pose (mode 2): pitch, roll and heave setpoints, −1..1, streamed as
+        /// <c>0x1E/07</c> instead of this frame's fields. Null on a game-mode frame.
+        /// </summary>
+        public float[]? Setpoints;
+
         /// <summary>Engine speed for the <c>0x22/09</c> engine vibration; negative = send none.</summary>
         public float EngineRpm = -1f;
         /// <summary>Unrounded throttle (0..1) for the vibration's 4th harmonic.</summary>
@@ -102,6 +108,7 @@ namespace MozaPlugin.Protocol
         public const byte CmdGlobal = 0x04;
         public const byte CmdEffectSlot = 0x05;
         public const byte CmdRoadDetail = 0x06;
+        public const byte CmdManualAxis = 0x07;
         public const byte CmdRigDimensions = 0x08;
         public const byte CmdDeviceType = 0x0A;
         public const byte CmdLighting = 0x0B;
@@ -115,6 +122,10 @@ namespace MozaPlugin.Protocol
 
         public const byte GlobalMaxStroke = 0x00;
         public const byte GlobalHapticIntensity = 0x01;
+
+        /// <summary>Manual Motion Test axes (<c>0x1E/07</c>), in the order a frame's setpoints are held.</summary>
+        public const byte AxisPitch = 0x00, AxisRoll = 0x01, AxisHeave = 0x03;
+        public static readonly byte[] ManualAxes = { AxisPitch, AxisRoll, AxisHeave };
 
         /// <summary>Effect slots MM writes on this platform.</summary>
         public const byte SlotPitch = 0x00, SlotRoll = 0x01, SlotHeave = 0x03, SlotAccelPitch = 0x07, SlotAccelRoll = 0x08;
@@ -159,6 +170,19 @@ namespace MozaPlugin.Protocol
         /// <summary><c>7E 05 1E 12 03 [mode] 00 00 00</c>, e.g. self-check <c>7e051e120307000000ca</c>.</summary>
         public static byte[] BuildSetMode(MotionMode mode)
             => Build(GroupWrite, DeviceController, CmdMode, (byte)mode, 0, 0, 0);
+
+        /// <summary>
+        /// <c>7E 06 1E 12 07 [axis] [f32 setpoint]</c>, −1..1, echoed on <c>9E 21</c>. The
+        /// controller follows it in mode 2 once the run state is run.
+        /// </summary>
+        public static byte[] BuildManualSetpoint(byte axis, float value)
+        {
+            var p = new byte[6];
+            p[0] = CmdManualAxis;
+            p[1] = axis;
+            PutF32(p, 2, value);
+            return Build(GroupWrite, DeviceController, p);
+        }
 
         /// <summary><c>7e051f120300000000c4</c> → <c>9F 21 03 [target] [current] 00 [flags]</c>.</summary>
         public static byte[] BuildModePoll()

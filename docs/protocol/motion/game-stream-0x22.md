@@ -112,6 +112,23 @@ profile (washout, limits, per-game tuning) does the cueing:
 | f4–f6 | 0, so the controller's Acceleration Pitch / Roll effects add nothing |
 | f8–f11 | rest − `HeaveMm`, the common-mode shock change the controller turns into heave (above). Sign and gain not yet checked on a rig, and the controller washes held offsets out in ~1 s |
 
+**SimHub direct source** (*Motion source* = SimHub Motion profile, direct (with heave)): the
+lane runs the controller in mode 2 instead of game mode and streams the same pose as three
+`0x1E/07` setpoints each frame interval (`MotionTelemetryFrame.Setpoints`), limited to 5 units
+per second and ±1:
+
+| Axis | Setpoint |
+|------|----------|
+| `00` pitch | f0 of the pose frame ÷ 0.349 |
+| `01` roll | f1 of the pose frame ÷ −0.347 |
+| `03` heave | `HeaveMm` ÷ 56.4 (+ is up) |
+
+Pitch and roll then move the platform as far as the pose source does with the controller's
+Pitch / Roll at 100 %, and heave is a held position in mm. The controller's Motion Effects
+play no part, and it gets no `0x22/00` frame, so nothing derived from one (Road Detail,
+Acceleration Pitch / Roll) runs. SimHub idle and stale data return the setpoints to 0. Changing
+the source while running leaves one mode through standby and enters the other.
+
 The pose is `FinalMotionState` (corner haptics folded in) while *Include SimHub corner haptics*
 is on (default), else `MotionState`; haptics that write heave directly (engine, touchdown) are
 in both. They run at 7–50 Hz against a ~33 Hz frame rate, so the fast ones alias. The
@@ -208,7 +225,27 @@ b2h  7E 06 9E 21 07 00 3F800000 [chk]      echo
 | −100 % | −1.0 | `BF800000` |
 | Zero | 0.0 | `00000000` |
 
-The captures contain only discrete slider moves (9 frames in 73 s); whether the controller
-accepts a continuous stream of `0x1E/07` setpoints at game rates, and how it filters them, is
-untested (open question). The mode poll reads `03 02 02 00 00` throughout the manual-test
-captures; the controller logs nothing per setpoint.
+The Motion Manager captures contain only discrete slider moves (9 frames in 73 s). The mode
+poll reads `03 02 02 00 00` throughout; the controller logs nothing per setpoint.
+
+**Streamed setpoints** (bench runs of 10 Nov, `tools/hma150-characterize.ps1 -Experiment Manual`
+and `ManualScale`, Max Available Stroke 1.0, rig 1029 × 700 mm):
+
+- Entry: travel self-check, `set mode 2` once (poll: target 2, current 3 → 2), then run state
+  `03`. A setpoint stream sent before the run state left `Manual Input` at 0 in the 60 s log line.
+- The controller echoed every write: 3373 of 3373 on one axis at 33 Hz, and 322 of 322 on each
+  of the three axes written back to back each 30 ms.
+- A held setpoint holds: the `Output Displacement` line read the same value 50–60 s into each
+  hold. No washout, unlike game-mode heave.
+- Scale, from one held axis per line (`Manual Input` logs axis `01`, axis `00`, axis `03`):
+
+| Setpoint | Output Displacement (mm) | Per 1.0 |
+|----------|--------------------------|---------|
+| pitch +0.05 | `3.236 -3.225 -3.225 3.236`: nose up | 129 mm of pitch term, the same as f0 = +0.349 rad in game mode at Pitch 100 % |
+| roll +0.05 | `3.223 3.223 -3.199 -3.199`: right side down | 128 mm of roll term, the same as f1 = −0.347 rad |
+| heave −0.10 / +0.10 / +0.30 | `-5.638` / `5.638` / `16.583` on all four: + is up | 56.4 mm (55.3 at +0.30) |
+
+  The displacement order is front-left, rear-left, rear-right, front-right.
+- The port status words (`0x21/02`) read zero throughout mode 2, so there is no position
+  feedback here either. The October capture's 13.36 mm for heave −1.0 at Max Available Stroke
+  0.30 suggests the stroke still limits travel; not measured.

@@ -69,7 +69,7 @@
         <TextBlock Style="{StaticResource Header}" Text="{x:Static res:Strings.Motion_Panel_Setup}"/>
         <StackPanel Style="{StaticResource Row}">
             <TextBlock Style="{StaticResource Label}" Text="{x:Static res:Strings.Motion_Panel_Source}"/>
-            <ComboBox x:Name="SourceCombo" Width="220" VerticalAlignment="Center"/>
+            <ComboBox x:Name="SourceCombo" Width="320" VerticalAlignment="Center"/>
         </StackPanel>
         <StackPanel Style="{StaticResource Row}">
             <TextBlock Style="{StaticResource Label}"/>

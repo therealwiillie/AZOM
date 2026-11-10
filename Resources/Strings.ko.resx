@@ -895,4 +895,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>음악 트랙</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>음악 볼륨</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>시작 음악</value></data>
+  <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>SimHub Motion 프로필, 직접 (히브 포함)</value></data>
 </root>

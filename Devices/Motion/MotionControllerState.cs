@@ -22,6 +22,12 @@ namespace MozaPlugin.Devices.Motion
     public sealed class MotionEngageConfig
     {
         public int FrameIntervalMs = 30;
+        /// <summary>
+        /// Direct pose: mode 2 (Manual Motion Test) and a <c>0x1E/07</c> setpoint stream in
+        /// place of game mode and the <c>0x22/00</c> frame. The controller's Motion Effects
+        /// then play no part, and heave is a held position.
+        /// </summary>
+        public bool Direct;
     }
 
     /// <summary>One Motion Effects slider pair as the controller holds it (0..1 each).</summary>

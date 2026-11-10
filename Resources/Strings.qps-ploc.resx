@@ -886,4 +886,5 @@
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Arf Arf!</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Howl Howl!</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>AWOO WOOF!!</value></data>
+  <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Boof Woof Arf, Grr (Bark Woof)</value></data>
 </root>

@@ -895,4 +895,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Κομμάτι μουσικής</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Ένταση μουσικής</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>ΜΟΥΣΙΚΗ ΕΚΚΙΝΗΣΗΣ</value></data>
+  <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Προφίλ SimHub Motion, απευθείας (με heave)</value></data>
 </root>

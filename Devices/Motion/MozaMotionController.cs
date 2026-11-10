@@ -16,7 +16,8 @@ namespace MozaPlugin.Devices.Motion
     /// or another tool can open it the rest of the time. While held it keeps the host
     /// heartbeat alive (the controller raises error 269 and drops to mode 0 after ~500 ms
     /// of silence), enrols identity / port map / setup / effect values, and runs the engage
-    /// sequence (travel self-check, mode-1 entry, 0x22/00 streaming). On release it puts
+    /// sequence (travel self-check, mode-1 entry, 0x22/00 streaming; or, for the direct pose,
+    /// mode-2 entry and a 0x1E/07 setpoint stream). On release it puts
     /// the controller in standby and closes the port.
     ///
     /// Threading: inbound frames are parsed on the connection's dispatch thread into
@@ -44,6 +45,9 @@ namespace MozaPlugin.Devices.Motion
         private const int EngageConnectTimeoutMs = 15_000;
         private const int StandbyTimeoutMs = 5_000;
         private const int DesiredCheckMs = 1_000;
+        // Direct pose: the fastest a setpoint may travel, in setpoint units per second. Above
+        // anything a pose asks for; it only softens the jump when frames stop or resume.
+        private const float SetpointSlewPerSecond = 5f;
         private const int DesiredPushAttempts = 3;
         private const float DefaultEngineStrength = DefaultEngineStrengthPercent / 100f, DefaultTactile = 0.4f;
 
@@ -119,6 +123,9 @@ namespace MozaPlugin.Devices.Motion
         private long _framesSent;
         private bool _vibrating;
         private int _frameIntervalMs = 30;
+        private bool _direct;
+        private readonly float[] _setpoints = new float[MozaMotionProtocol.ManualAxes.Length];
+        private long _lastSetpointMs;
         private bool _wasConnected;
         private bool _released;
         private long _lastConnectAttemptMs = -ConnectRetryMs;
@@ -127,6 +134,7 @@ namespace MozaPlugin.Devices.Motion
         // ---- port demand
         private int _holds;
         private MotionEngageConfig? _pendingEngage;
+        private volatile bool _engagedDirect;
         private long _pendingEngageSinceMs;
 
         // ---- posted by the output
@@ -197,11 +205,29 @@ namespace MozaPlugin.Devices.Motion
             _faultReason = null;
             var phase = _phase;
             if (phase == MotionLanePhase.Game || phase == MotionLanePhase.EnteringGame
-                || phase == MotionLanePhase.SelfChecking) return;
+                || phase == MotionLanePhase.SelfChecking)
+            {
+                if (config.Direct == _engagedDirect) return;
+                // The other stream mode: leave this one first; the worker engages once that is done.
+                _engagedDirect = config.Direct;
+                Interlocked.Exchange(ref _pendingEngageSinceMs, _clock.ElapsedMilliseconds);
+                Volatile.Write(ref _pendingEngage, config);
+                _requests.Enqueue(() =>
+                {
+                    if (_phase == MotionLanePhase.Game || _phase == MotionLanePhase.EnteringGame
+                        || _phase == MotionLanePhase.SelfChecking)
+                        StartSequence(DisengageSequence());
+                });
+                return;
+            }
             if (phase == MotionLanePhase.Faulted) _phase = MotionLanePhase.Ready;
+            _engagedDirect = config.Direct;
             Interlocked.Exchange(ref _pendingEngageSinceMs, _clock.ElapsedMilliseconds);
             Volatile.Write(ref _pendingEngage, config);
         }
+
+        /// <summary>Whether the last <see cref="Engage"/> asked for the direct pose stream.</summary>
+        public bool EngagedDirect => _engagedDirect;
 
         /// <summary>Stop streaming: run state stop, then standby (motors off).</summary>
         public void Disengage()
@@ -570,6 +596,7 @@ namespace MozaPlugin.Devices.Motion
                 if (engage != null)
                 {
                     _frameIntervalMs = Math.Max(5, engage.FrameIntervalMs);
+                    _direct = engage.Direct;
                     _faultReason = null;
                     StartSequence(EngageSequence());
                 }
@@ -618,6 +645,16 @@ namespace MozaPlugin.Devices.Motion
             MotionTelemetryFrame frame;
             var posted = Volatile.Read(ref _postedFrame);
             long age = now - Interlocked.Read(ref _postedAtMs);
+            if (_direct)
+            {
+                // Mode 2 takes nothing until it is entered; idle and stale data go to level.
+                if (_phase != MotionLanePhase.Game) return;
+                bool live = !_idle && posted != null && age <= StaleFrameMs;
+                StreamSetpoints(now, live ? posted!.Setpoints : null);
+                Interlocked.Increment(ref _framesSent);
+                StreamVibration(live ? posted! : MotionTelemetryFrame.Neutral(inGame: false));
+                return;
+            }
             // Entry and stale data: neutral with the in-game flag set, as the prototype does.
             // SimHub idle: neutral with the flag clear, as MM does while the car is off track.
             if (_phase == MotionLanePhase.Game && _idle)
@@ -628,7 +665,30 @@ namespace MozaPlugin.Devices.Motion
                 frame = posted;
             _connection.SendStream(StreamKind.MotionTelemetry, MozaMotionProtocol.BuildTelemetryFrame(frame));
             Interlocked.Increment(ref _framesSent);
+            StreamVibration(frame);
+        }
 
+        /// <summary>
+        /// Direct pose: one <c>0x1E/07</c> per axis towards <paramref name="target"/> (null =
+        /// level), each limited to <see cref="SetpointSlewPerSecond"/> and clamped to ±1.
+        /// </summary>
+        private void StreamSetpoints(long now, float[]? target)
+        {
+            float step = SetpointSlewPerSecond * Math.Min(100, Math.Max(1, now - _lastSetpointMs)) / 1000f;
+            _lastSetpointMs = now;
+            for (int i = 0; i < _setpoints.Length; i++)
+            {
+                float want = target != null && i < target.Length && !float.IsNaN(target[i]) ? target[i] : 0f;
+                want = Math.Max(-1f, Math.Min(1f, want));
+                float v = _setpoints[i] + Math.Max(-step, Math.Min(step, want - _setpoints[i]));
+                _setpoints[i] = v;
+                _connection.SendStream(StreamKind.MotionSetpointPitch + i,
+                    MozaMotionProtocol.BuildManualSetpoint(MozaMotionProtocol.ManualAxes[i], v));
+            }
+        }
+
+        private void StreamVibration(MotionTelemetryFrame frame)
+        {
             // Engine vibration rides along with live frames; when it stops, one zero-gain
             // frame silences the last tone.
             if (frame.EngineRpm >= 0)
@@ -651,11 +711,14 @@ namespace MozaPlugin.Devices.Motion
 
         private void WatchGameMode(long now)
         {
-            if (_modeCurrent == (int)MotionMode.Game) { _gameLostSinceMs = -1; return; }
+            if (_modeCurrent == (int)StreamMode) { _gameLostSinceMs = -1; return; }
             if (_gameLostSinceMs < 0) { _gameLostSinceMs = now; return; }
             if (now - _gameLostSinceMs > GameLossToleranceMs)
-                Fault($"controller left game mode (mode {_modeCurrent}, flags 0x{_flags:X2}{ErrorSuffix()})");
+                Fault($"controller left {(_direct ? "direct" : "game")} mode (mode {_modeCurrent}, flags 0x{_flags:X2}{ErrorSuffix()})");
         }
+
+        /// <summary>The controller mode the engaged stream runs in.</summary>
+        private MotionMode StreamMode => _direct ? MotionMode.ManualTest : MotionMode.Game;
 
         private string ErrorSuffix()
         {
@@ -845,6 +908,31 @@ namespace MozaPlugin.Devices.Motion
                 yield return 300;
             }
 
+            if (_direct)
+            {
+                // Bench-proven entry (10 Nov): set mode 2 (it passes through 3), level
+                // setpoints, then run state 03 — the controller ignores setpoints before it.
+                _phase = MotionLanePhase.EnteringGame;
+                long began = _clock.ElapsedMilliseconds;
+                long lastSet = -1_000;
+                while (_modeCurrent != (int)MotionMode.ManualTest)
+                {
+                    long elapsed = _clock.ElapsedMilliseconds - began;
+                    if (elapsed > GameEntryTimeoutMs) { Fault($"controller did not enter direct mode (mode {_modeCurrent}{ErrorSuffix()})"); yield break; }
+                    if (elapsed - lastSet >= 1_000) { Send(MozaMotionProtocol.BuildSetMode(MotionMode.ManualTest)); lastSet = elapsed; }
+                    yield return 33;
+                }
+                foreach (int wait in LevelSetpoints()) yield return wait;
+                SendRunState(MotionRunState.Run);
+                yield return 300;
+                _lastSetpointMs = _clock.ElapsedMilliseconds;
+                _nextFrameMs = 0;
+                _gameLostSinceMs = -1;
+                _phase = MotionLanePhase.Game;
+                MozaLog.Info("[AZOM/Motion] Direct mode");
+                yield break;
+            }
+
             // Prototype-proven entry: stream neutral frames and repeat set-mode 1 until the
             // controller reports mode 1 (it passes through 5/3); run state 03 after ~300 ms.
             _phase = MotionLanePhase.EnteringGame;
@@ -868,12 +956,17 @@ namespace MozaPlugin.Devices.Motion
         private IEnumerator<int> DisengageSequence()
         {
             _phase = MotionLanePhase.Disengaging;
-            _connection.ClearStreamSlots((int)StreamKind.MotionTelemetry, 2);
+            _connection.ClearStreamSlots((int)StreamKind.MotionTelemetry, 2 + _setpoints.Length);
             // Motion Manager's last 0x22/09 when it leaves game mode has every gain at zero.
             if (_vibrating)
             {
                 _vibrating = false;
                 Send(MozaMotionProtocol.BuildEngineVibrationSilent());
+            }
+            if (_modeCurrent == (int)MotionMode.ManualTest)
+            {
+                foreach (int wait in LevelSetpoints()) yield return wait;
+                yield return 300;
             }
             SendRunState(MotionRunState.Stop);
             yield return 50;
@@ -883,6 +976,17 @@ namespace MozaPlugin.Devices.Motion
                 yield return 50;
             _phase = MotionLanePhase.Ready;
             MozaLog.Info($"[AZOM/Motion] Disengaged (mode {_modeCurrent})");
+        }
+
+        /// <summary>Every direct-pose axis to 0, one write per request slot.</summary>
+        private IEnumerable<int> LevelSetpoints()
+        {
+            for (int i = 0; i < _setpoints.Length; i++)
+            {
+                _setpoints[i] = 0f;
+                Send(MozaMotionProtocol.BuildManualSetpoint(MozaMotionProtocol.ManualAxes[i], 0f));
+                yield return EnrolReadSpacingMs;
+            }
         }
 
         /// <summary>Nothing holds the lane: standby (as Motion Manager's Close), then close the port.</summary>
@@ -1112,7 +1216,7 @@ namespace MozaPlugin.Devices.Motion
             {
                 try
                 {
-                    _connection.ClearStreamSlots((int)StreamKind.MotionTelemetry, 2);
+                    _connection.ClearStreamSlots((int)StreamKind.MotionTelemetry, 2 + _setpoints.Length);
                     _connection.Send(MozaMotionProtocol.BuildEngineVibrationSilent());
                     _connection.Send(MozaMotionProtocol.BuildRunState(MotionRunState.Stop));
                     _connection.Send(MozaMotionProtocol.BuildSetMode(MotionMode.Standby));

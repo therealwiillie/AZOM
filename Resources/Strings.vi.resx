@@ -896,4 +896,5 @@ Id: {2}</value></data>
   <data name="SliderLabel_StartupMusicTrack" xml:space="preserve"><value>Bản nhạc</value></data>
   <data name="SliderLabel_StartupMusicVolume" xml:space="preserve"><value>Âm lượng nhạc</value></data>
   <data name="Section_StartupMusic" xml:space="preserve"><value>NHẠC KHỞI ĐỘNG</value></data>
+  <data name="Motion_Source_SimHubDirect" xml:space="preserve"><value>Hồ sơ SimHub Motion, trực tiếp (có heave)</value></data>
 </root>

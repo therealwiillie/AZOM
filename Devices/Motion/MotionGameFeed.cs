@@ -20,6 +20,15 @@ namespace MozaPlugin.Devices.Motion
     public sealed class MotionGameFeed
     {
         private const double DegToRad = Math.PI / 180.0;
+
+        // Mode 2 setpoint scales, bench run of 10 Nov (Max Available Stroke 1.0, one axis held
+        // per Output Displacement line): pitch +0.05 gave a +6.46 mm pitch term, roll +0.05 a
+        // +6.42 mm roll term, heave ±0.1 gave ±5.64 mm on all four actuators. Game mode turns
+        // f0 into +370 mm of pitch term per rad and f1 into −370 mm of roll term per rad with
+        // the Pitch / Roll sliders at 100 %, so these make both modes move the platform alike.
+        private const float PitchRadPerSetpoint = 0.349f;
+        private const float RollRadPerSetpoint = -0.347f;
+        private const float HeaveMmPerSetpoint = 56.4f;
         private const int GearPulseMs = 120;
         private const double EngineOffRpm = 100.0;
 
@@ -112,9 +121,12 @@ namespace MozaPlugin.Devices.Motion
         /// yaw rate, speed, pedals, engine and flags come from <paramref name="game"/> when a game runs.
         /// Pose signs: SimHub's pitch is −GameData pitch and its roll +GameData roll (MotionPlugin),
         /// so both flip to match <see cref="Update"/>. Heave sign untested on the rig.
+        /// <paramref name="direct"/> adds the same pose as mode 2 setpoints
+        /// (<see cref="MotionTelemetryFrame.Setpoints"/>), scaled so pitch and roll move the
+        /// platform as far as f0/f1 do in game mode with the controller's sliders at 100 %.
         /// </summary>
         public static MotionTelemetryFrame PoseFrame(double pitchDegrees, double rollDegrees, double heaveMm,
-            MotionTelemetryFrame? game)
+            MotionTelemetryFrame? game, bool direct = false)
         {
             var f = new MotionTelemetryFrame();
             f.Fields[0] = (float)(-pitchDegrees * DegToRad);
@@ -134,6 +146,13 @@ namespace MozaPlugin.Devices.Motion
                 f.Flags = MozaMotionProtocol.FlagInGame;
             for (int k = 0; k < 4; k++)
                 f.Fields[8 + k] = (float)(MotionTelemetryFrame.ShockRestMm[k] - heaveMm);
+            if (direct)
+                f.Setpoints = new[]
+                {
+                    f.Fields[0] / PitchRadPerSetpoint,
+                    f.Fields[1] / RollRadPerSetpoint,
+                    (float)(heaveMm / HeaveMmPerSetpoint),
+                };
             return f;
         }
 

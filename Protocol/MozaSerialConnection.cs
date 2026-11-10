@@ -108,6 +108,10 @@ namespace MozaPlugin.Protocol
         MotionTelemetry = 46,
         // Its 0x22/09 engine vibration frame, sent alongside (latest-wins).
         MotionEngineVibration = 47,
+        // Its 0x1E/07 direct-pose setpoints in mode 2, one slot per axis (latest-wins).
+        MotionSetpointPitch = 48,
+        MotionSetpointRoll = 49,
+        MotionSetpointHeave = 50,
     }
 
     /// <summary>Device family targeted by the serial probe fallback (registry-empty case).</summary>
@@ -169,7 +173,7 @@ namespace MozaPlugin.Protocol
         // second block is only used when two pipelines share one connection.
         // NOTE: keep this >= (highest StreamKind + 1). The static ctor below
         // asserts the regions are disjoint and fit.
-        private const int StreamSlotCount = 48;
+        private const int StreamSlotCount = 51;
 
         // Startup slot-layout invariant: the LED lanes (29+) must not alias the
         // wheel value pipeline (0..10), AB9/mBooster (11..17), or the CM2 second
@@ -201,6 +205,10 @@ namespace MozaPlugin.Protocol
             System.Diagnostics.Debug.Assert((int)StreamKind.MotionEngineVibration > (int)StreamKind.MotionTelemetry
                 && (int)StreamKind.MotionEngineVibration < StreamSlotCount,
                 "motion engine-vibration stream slot must follow the telemetry slot and fit StreamSlotCount");
+            System.Diagnostics.Debug.Assert((int)StreamKind.MotionSetpointPitch > (int)StreamKind.MotionEngineVibration
+                && (int)StreamKind.MotionSetpointHeave == (int)StreamKind.MotionSetpointPitch + 2
+                && (int)StreamKind.MotionSetpointHeave < StreamSlotCount,
+                "motion setpoint stream slots must follow the engine-vibration slot and fit StreamSlotCount");
         }
 
         // Ports held by a live connection — probe path skips these (Wine pty
