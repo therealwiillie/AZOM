@@ -24,10 +24,11 @@
     .\hma150-characterize.ps1 -Experiment Writes -StrokeValue 0.5 -RigL1 520 -RigL2 480
     .\hma150-characterize.ps1 -Experiment Manual   # mode 2: streamed 0x1E/07 heave/pitch/roll setpoints (~3 min)
     .\hma150-characterize.ps1 -Experiment ManualScale   # mode 2: pitch, roll and heave held 62 s each for the mm scales (~5 min)
+    .\hma150-characterize.ps1 -Experiment ManualStep    # mode 2: how fast heave reaches a step, by feel and by the 60 s log line (~7 min)
 #>
 param(
     [string]  $ComPort      = "COM6",
-    [ValidateSet("All", "Gain", "Sweep", "Heave", "Gating", "Feedback", "Writes", "Manual", "ManualScale")]
+    [ValidateSet("All", "Gain", "Sweep", "Heave", "Gating", "Feedback", "Writes", "Manual", "ManualScale", "ManualStep")]
     [string]  $Experiment   = "All",
     [ValidateSet("Pitch", "Roll")]
     [string]  $Axis         = "Pitch",
@@ -42,7 +43,7 @@ param(
     [double]  $StrokeValue  = -1,      # Writes: Max Available Stroke 0..1 (-1 = skip)
     [double]  $RigL1        = -1,      # Writes: rig length mm (-1 = skip)
     [double]  $RigL2        = -1,      # Writes: rig width mm
-    [double]  $ManualHeave  = 0.2,     # Manual: heave setpoint amplitude (slider units, clamped to 0.3)
+    [double]  $ManualHeave  = 0.2,     # Manual: heave setpoint amplitude (slider units, clamped to 0.3; ManualStep: step size, to 0.5)
     [double]  $ManualTilt   = 0.05,    # Manual: pitch/roll setpoint amplitude (clamped to 0.1)
     [double]  $ManualHoldSec = 62,     # Manual: heave hold, long enough for one 60 s Output Displacement line
     [switch]  $SkipLighting,
@@ -104,6 +105,9 @@ $script:selfCheckOk = $false
 $script:ports = @{}         # port -> present
 $script:reads = @{}         # "grp/cmd/idx" -> payload
 $script:logBuf = @{}
+$script:dispAt = -1         # clock ms of the last firmware Output Displacement line
+$script:dispCount = 0
+$script:dispText = ""
 
 function Poll-Serial {
     $n = $serial.BytesToRead
@@ -145,6 +149,9 @@ function Handle-Frame([byte[]]$f) {
         $script:logBuf[$dev] = ""
         $line = $txt.Trim()
         if ($line -match "selfCheckSuccess") { $script:selfCheckOk = $true }
+        if ($line -match "Output Displacement\s*:\s*(.+)$") {
+            $script:dispAt = $script:clock.ElapsedMilliseconds; $script:dispCount++; $script:dispText = $Matches[1].Trim()
+        }
         $noise = $line -match 'I_total|^V=|mos_t|Fault|is_connected|access_dev_num|^Slave\(|^\[\d|^[\d\.,=\-]|^P\d'
         if (-not $noise) {
             $color = "DarkCyan"; if ($line -match "ERRO|error_code") { $color = "Red" }
@@ -513,6 +520,78 @@ function Exp-ManualScale {
     Pump 2000
 }
 
+# How fast mode 2 reaches a heave setpoint. Part A is judged from the seat: instant steps as the
+# controller is, then with the Heave effect slot's smoothness and intensity changed (do the
+# Motion Effects act in mode 2?), the slot restored after. Part B times it: a step a set time
+# before each 60 s Output Displacement line, so the line reads the position that long after.
+function Read-Slot([byte]$slot) {
+    $script:reads.Remove(("05/{0:x2}" -f $slot))
+    Send 0x1F (@(0x05, $slot) + (New-Object byte[] 8)); Pump 250
+}
+function Step-Set([string]$label, [double]$v, [int]$count) {
+    Mark ("STEP heave to {0:+0.00;-0.00} x{1}, 2.5 s each: {2}" -f $v, $count, $label)
+    for ($n = 0; $n -lt $count; $n++) { Manual-Stream 2.5 0x03 { param($t) $v } }
+}
+function Exp-ManualStep {
+    $drop = -[Math]::Max(0.0, [Math]::Min(0.5, $ManualHeave))
+    Enter-Manual
+    Send 0x20 @(0x02, 0x03, 0x00); Pump 300
+    Mark "run state 03"
+    Read-Slot 0x03
+    $old = $script:reads["05/03"]
+    if ($old -and $old.Length -ge 10) {
+        $oldI = ReadF32 $old 2; $oldS = ReadF32 $old 6
+        Mark ("heave slot 03 reads intensity {0:F2} smoothness {1:F2}" -f $oldI, $oldS)
+    } else { Mark "heave slot 03 did not read back: slot tests skipped" }
+    Step-Set "A1 controller as it is" $drop 3
+    if ($old -and $old.Length -ge 10) {
+        try {
+            Set-Slot 0x03 $oldI 0.0; Pump 300
+            Step-Set "A2 heave smoothness 0" $drop 3
+            Set-Slot 0x03 $oldI 1.0; Pump 300
+            Step-Set "A3 heave smoothness 100" $drop 3
+            Set-Slot 0x03 0.3 $oldS; Pump 300
+            Step-Set "A4 heave intensity 30" $drop 2
+        } finally {
+            Send 0x1E (@(0x05, 0x03) + $old[2..9]); Pump 300
+            Read-Slot 0x03
+            $back = $script:reads["05/03"]
+            Mark ("heave slot 03 restored: {0}" -f $(if ($back -and $back.Length -ge 10) { "{0:F2} / {1:F2}" -f (ReadF32 $back 2), (ReadF32 $back 6) } else { "no readback" }))
+        }
+    }
+    # Part B. The log line is on a free-running 60 s timer: find one, then step before the next.
+    Mark "TIMING waiting for an Output Displacement line (up to 65 s)"
+    $seen = $script:dispCount
+    if ($script:dispAt -lt 0) {
+        $w = [Diagnostics.Stopwatch]::StartNew()
+        while ($script:dispCount -eq $seen -and $w.ElapsedMilliseconds -lt 65000) { Set-Manual 0x03 0.0; Pump 30 }
+        if ($script:dispCount -eq $seen) { Mark "TIMING no Output Displacement line seen: skipped"; return }
+    }
+    foreach ($lead in 60, 120, 250, 500) {
+        $tick = $script:dispAt
+        while ($tick - $lead -lt $script:clock.ElapsedMilliseconds + 3000) { $tick += 60000 }
+        $seen = $script:dispCount; $stepAt = -1
+        while ($script:dispCount -eq $seen -or $script:dispAt -lt $tick - 5000) {
+            $now = $script:clock.ElapsedMilliseconds
+            if ($now -gt $tick + 5000) { break }
+            if ($stepAt -lt 0 -and $now -ge $tick - $lead) { $stepAt = $now; Mark ("TIMING step heave +0.30, aimed {0} ms before the log line" -f $lead) }
+            if ($now -ge $script:nextFrame) {
+                $script:nextFrame = $now + $script:frameMs
+                Set-Manual 0x03 $(if ($stepAt -ge 0) { 0.3 } else { 0.0 })
+            }
+            Heartbeat; Poll-Serial
+            if ($script:mode.current -ne 2) { throw "Controller left manual mode (current=$($script:mode.current))" }
+            Start-Sleep -Milliseconds 1
+        }
+        if ($stepAt -ge 0 -and $script:dispAt -ge $stepAt) {
+            Mark ("TIMING RESULT {0} ms after the step: {1} (full travel is 16.58 each)" -f ($script:dispAt - $stepAt), $script:dispText)
+        } else { Mark ("TIMING lead {0}: the log line came at {1}, step at {2}: missed" -f $lead, $script:dispAt, $stepAt) }
+        Manual-Stream 1.0 0x03 { param($t) 0.3 }
+    }
+    foreach ($axis in 0, 1, 3) { Set-Manual ([byte]$axis) 0.0 }
+    Pump 2000
+}
+
 # ---------------------------------------------------------------- main
 Write-Host "==============================================="
 Write-Host " HMA150 characterization: $Experiment ($Axis), $RateHz Hz frames"
@@ -531,6 +610,7 @@ try {
     if ($Experiment -eq "Writes") { Exp-Writes; return }
     if ($Experiment -eq "Manual") { Exp-Manual; Mark "done"; return }
     if ($Experiment -eq "ManualScale") { Exp-ManualScale; Mark "done"; return }
+    if ($Experiment -eq "ManualStep") { Exp-ManualStep; Mark "done"; return }
     Enter-Game
     switch ($Experiment) {
         "All"      {
