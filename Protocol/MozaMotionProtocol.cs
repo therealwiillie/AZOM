@@ -64,6 +64,13 @@ namespace MozaPlugin.Protocol
         public byte ThrottlePercent;
         public byte Flags;
 
+        /// <summary>
+        /// The frame is a pose for AI mode (mode 11): f0/f1 angles to follow and f6 a heave position
+        /// in mm (<c>MotionGameFeed.PoseFrameAsPosition</c>). False for game-mode input, where f6 is
+        /// vertical acceleration. The lane streams a frame only in the mode it was built for.
+        /// </summary>
+        public bool IsPosition;
+
         /// <summary>Engine speed for the <c>0x22/09</c> engine vibration; negative = send none.</summary>
         public float EngineRpm = -1f;
         /// <summary>Engine speed as a share of the redline (0..1), for the vibration's fade-in with revs.</summary>
@@ -347,11 +354,18 @@ namespace MozaPlugin.Protocol
         /// mode 1, never answered.
         /// </summary>
         public static byte[] BuildTelemetryFrame(MotionTelemetryFrame f)
+            => BuildTelemetryFrame(f, f.Fields[0], f.Fields[1], f.Fields[6]);
+
+        /// <summary>
+        /// The same frame with f0, f1 and f6 replaced, for a sender that reshapes the pose (AI mode's
+        /// limits) without writing to a frame other threads hold.
+        /// </summary>
+        public static byte[] BuildTelemetryFrame(MotionTelemetryFrame f, float f0, float f1, float f6)
         {
             var p = new byte[53];
             p[0] = StreamTelemetry;
             for (int i = 0; i < MotionTelemetryFrame.FieldCount; i++)
-                PutF32(p, 1 + 4 * i, f.Fields[i]);
+                PutF32(p, 1 + 4 * i, i == 0 ? f0 : i == 1 ? f1 : i == 6 ? f6 : f.Fields[i]);
             p[49] = f.BrakePercent;
             p[50] = f.ThrottlePercent;
             p[51] = 0;

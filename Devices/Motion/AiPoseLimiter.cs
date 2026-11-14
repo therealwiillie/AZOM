@@ -79,30 +79,45 @@ namespace MozaPlugin.Devices.Motion
 
         private static double Forward(double asked, double s) => s > 0.0 ? s * Math.Tanh(asked / s) : asked;
 
-        private static double Inverse(double wanted, double s)
+        /// <summary>
+        /// What to ask of a soft limit out = s·tanh(asked / s) to get <paramref name="wanted"/>:
+        /// s·atanh(wanted / s), with wanted held within ±<paramref name="maxShare"/> of s (the inverse
+        /// runs away as it nears s).
+        /// </summary>
+        public static double Inverse(double wanted, double s, double maxShare = 0.95)
         {
             if (s <= 0.0) return wanted;
-            double u = Math.Max(-0.95, Math.Min(0.95, wanted / s));
+            double u = Math.Max(-maxShare, Math.Min(maxShare, wanted / s));
             return s * 0.5 * Math.Log((1.0 + u) / (1.0 - u));
         }
+
+        /// <summary>
+        /// Longest step the limiter integrates in one call. A frame that arrives late (a GC pause, a
+        /// scheduler hiccup) then moves no further than a normal frame or two would, instead of
+        /// catching the whole gap up in one go.
+        /// </summary>
+        public const double MaxStepSeconds = 0.05;
 
         /// <summary>
         /// Move towards the target pose within the travel, speed and acceleration limits and return
         /// the pose to send. <paramref name="strokeShare"/> is Max Available Stroke (0..1), which
         /// scales every travel figure as it does in the controller; <paramref name="dtSeconds"/> is
-        /// the time since the last call. The limits act on the travel the platform is meant to end
+        /// the time since the last call (at most <see cref="MaxStepSeconds"/> is used). The limits act on the travel the platform is meant to end
         /// up with: each of pitch and roll eased off towards <see cref="AxisTravelMm"/>, their sum
         /// with heave held to <see cref="FullTravelMm"/>, then speed and acceleration; the angles
         /// returned are those that give that travel through the controller's own soft limit.
         /// </summary>
         public void Step(double pitch, double roll, double heaveMm, double dtSeconds,
-            double halfLengthMm, double halfWidthMm, double strokeShare, double maxSpeedMmS, double maxAccelMmS2)
+            double halfLengthMm, double halfWidthMm, double strokeShare, double maxSpeedMmS, double maxAccelMmS2,
+            double reserveMm = 0.0)
         {
             if (double.IsNaN(pitch) || double.IsInfinity(pitch)) pitch = 0.0;
             if (double.IsNaN(roll) || double.IsInfinity(roll)) roll = 0.0;
             if (double.IsNaN(heaveMm) || double.IsInfinity(heaveMm)) heaveMm = 0.0;
             double stroke = Math.Max(0.0, Math.Min(1.0, strokeShare));
-            double axis = AxisTravelMm * stroke, travel = FullTravelMm * stroke, scale = ControllerTiltScaleMm * stroke;
+            double axis = AxisTravelMm * stroke, scale = ControllerTiltScaleMm * stroke;
+            // reserveMm: travel kept free for something added to heave after the limiter (the engine tick-over pulse).
+            double travel = Math.Max(0.0, FullTravelMm * stroke - Math.Max(0.0, reserveMm));
 
             // Each axis as the actuator travel it is meant to cause, so one mm/s figure covers all three.
             double tp = Forward(halfLengthMm * Math.Sin(pitch), axis);
@@ -121,7 +136,7 @@ namespace MozaPlugin.Devices.Motion
                 _x[2] = HeaveMm;
                 _seeded = true;
             }
-            double dt = Math.Max(0.001, Math.Min(0.2, dtSeconds));
+            double dt = Math.Max(0.001, Math.Min(MaxStepSeconds, dtSeconds));
             Advance(0, tp, dt, maxSpeedMmS, maxAccelMmS2);
             Advance(1, tr, dt, maxSpeedMmS, maxAccelMmS2);
             Advance(2, th, dt, maxSpeedMmS, maxAccelMmS2);

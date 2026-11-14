@@ -313,8 +313,9 @@ namespace MozaPlugin.Integration.Motion
                 {
                     // The crest signal belongs to the running game: none without a fresh game frame.
                     double crestPush = game != null ? currentSettings.CrestBoost / 100.0 * feed!.CrestPush : 0.0;
-                    // AI mode follows the pose as positions; until it is reached the frame keeps the game-mode shape.
-                    if (lane!.AiPoseActive)
+                    // AI mode follows the pose as positions. The lane says which shape it streams, and
+                    // drops any frame whose own shape (IsPosition) is not that one.
+                    if (lane!.StreamsAiPose)
                     {
                         // A held drop needs speed: none below 5 m/s, full from 15 m/s. A car being placed
                         // on the track reads as "light" and held the full drop for 10 s (capture 13 Nov 2026).

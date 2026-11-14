@@ -186,40 +186,26 @@ namespace MozaPlugin.Integration.Motion
                 var s = _output?.Settings;
                 if (s != null) s.IncludeCornerHaptics = CornerHapticsCheck.IsChecked == true;
             };
-            CrestBoostSlider.ValueChanged += (_, __) =>
+            WireIntSlider(CrestBoostSlider, CrestBoostValue, (st, v) => st.CrestBoost = v);
+            WireIntSlider(EnginePitchSlider, EnginePitchValue, (st, v) => st.EngineVibrationPitch = v);
+            WireIntSlider(EngineTickSlider, EngineTickValue, (st, v) => st.EngineTickover = v);
+        }
+
+        /// <summary>A whole-number slider with its value label, stored into the output's settings.</summary>
+        private void WireIntSlider(Slider slider, TextBlock label, Action<MozaHma150OutputSettings, int> store)
+        {
+            slider.ValueChanged += (_, __) =>
             {
                 if (_crestSyncing) return;
-                int value = (int)Math.Round(CrestBoostSlider.Value);
+                int value = (int)Math.Round(slider.Value);
                 // Re-set as the local value: WPF drops a drag's "current" value when the page
                 // unloads and raises ValueChanged with the stale local one, which got saved.
                 _crestSyncing = true;
-                try { CrestBoostSlider.Value = value; }
+                try { slider.Value = value; }
                 finally { _crestSyncing = false; }
-                CrestBoostValue.Text = value.ToString(CultureInfo.CurrentCulture);
+                label.Text = value.ToString(CultureInfo.CurrentCulture);
                 var s = _output?.Settings;
-                if (s != null) s.CrestBoost = value;
-            };
-            EnginePitchSlider.ValueChanged += (_, __) =>
-            {
-                if (_crestSyncing) return;
-                int value = (int)Math.Round(EnginePitchSlider.Value);
-                _crestSyncing = true;
-                try { EnginePitchSlider.Value = value; }
-                finally { _crestSyncing = false; }
-                EnginePitchValue.Text = value.ToString(CultureInfo.CurrentCulture);
-                var s = _output?.Settings;
-                if (s != null) s.EngineVibrationPitch = value;
-            };
-            EngineTickSlider.ValueChanged += (_, __) =>
-            {
-                if (_crestSyncing) return;
-                int value = (int)Math.Round(EngineTickSlider.Value);
-                _crestSyncing = true;
-                try { EngineTickSlider.Value = value; }
-                finally { _crestSyncing = false; }
-                EngineTickValue.Text = value.ToString(CultureInfo.CurrentCulture);
-                var s = _output?.Settings;
-                if (s != null) s.EngineTickover = value;
+                if (s != null) store(s, value);
             };
         }
 
@@ -249,7 +235,8 @@ namespace MozaPlugin.Integration.Motion
             EngineTickSlider.IsEnabled = ai;
             EngineTickNote.IsEnabled = ai;
             AiMaxPerformanceCheck.IsEnabled = ai;
-            AiMaxPerformanceWarning.IsEnabled = ai;
+            // The warning's own colour ignores IsEnabled, so it is dimmed by hand.
+            AiMaxPerformanceWarning.Opacity = ai ? 1.0 : 0.4;
         }
 
         // ------------------------------------------------------------ motion effects

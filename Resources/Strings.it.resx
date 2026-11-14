@@ -929,5 +929,5 @@ Id: {2}</value></data>
   <data name="Motion_Panel_EngineTickover" xml:space="preserve"><value>Forza del minimo motore (0 = disattivato)</value></data>
   <data name="Motion_Panel_EngineTickoverNote" xml:space="preserve"><value>Quando lo usi, disattiva l'effetto vibrazione motore nel tuo profilo SimHub Motion, così i due non si sovrappongono.</value></data>
   <data name="Motion_Panel_AiMaxPerformance" xml:space="preserve"><value>Modalità IA: prestazioni massime</value></data>
-  <data name="Motion_Panel_AiMaxPerformanceWarning" xml:space="preserve"><value>Le prestazioni massime seguono gli angoli completi di SimHub senza limite di velocità. È probabile che il tuo rig salti o si sposti. Usalo a tuo rischio.</value></data>
+  <data name="Motion_Panel_AiMaxPerformanceWarning" xml:space="preserve"><value>Le prestazioni massime seguono gli angoli completi di SimHub senza limite di velocità. Con le impostazioni di SimHub al massimo o vicine al massimo, è probabile che il tuo rig salti o si sposti. Usalo a tuo rischio.</value></data>
 </root>

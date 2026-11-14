@@ -231,6 +231,7 @@ namespace MozaPlugin.Devices.Motion
             var f = PoseFrame(pitch, roll, 0.0, game);
             double mm = Finite(heaveMm) - Math.Max(0.0, Finite(crestPush)) * (AiPoseCrestDropMm / CrestPushMax);
             f.Fields[6] = (float)Math.Max(-AiPoseHeaveLimitMm, Math.Min(AiPoseHeaveLimitMm, mm));
+            f.IsPosition = true;
             return f;
         }
 
